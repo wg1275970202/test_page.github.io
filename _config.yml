@@ -7,6 +7,7 @@
 # server process.
 
 # Basic Site Settings
+SEOTitle                 : "Gao's Blog"
 locale                   : "en-UK"
 title                    : "Gao Wang / PhD"
 title_separator          : "-"
@@ -24,7 +25,7 @@ author:
   avatar           : "profile.png"
   name             : "Gao Wang"
   pronouns         : # example: "she/her"  
-  bio              : "Short biography for the left-hand sidebar"
+  bio              : "A regular PhD student"
   location         : "Glasgow G11 6EW"
   employer         : "University of Glasgow"
   URI              : "https://www.physics.gla.ac.uk/xtremelight/Gao.html" # URL
