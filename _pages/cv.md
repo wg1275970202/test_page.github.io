@@ -15,9 +15,9 @@ Education
 * M.S. in Xi'an, Xi'an Jiaotong University, 2020
 * B.S. in Xi'an, Xi'an Jiaotong University, 2017
 
+[//]:(
 Work experience
 ======
-[//]:(
 * Spring 2024: Academic Pages Collaborator
   * Github University
   * Duties includes: Updates and improvements to template
@@ -32,7 +32,9 @@ Work experience
   * Github University
   * Duties included: Tagging issues
   * Supervisor: Professor Git
+
 )
+
 Skills
 ======
 * Skill 1
