@@ -1,5 +1,10 @@
+
+%%
+
 ! start excel talks.tsv
 %%
+rmdir("..\_talks","s")
+mkdir("..\_talks")
 pyrunfile("talks.py")
 
 
@@ -11,5 +16,6 @@ open("proceedings.bib")
 open("pubs.bib")
 
 %%
-
+rmdir("..\_publications","s")
+mkdir("..\_publications")
 pyrunfile("pubsFromBib.py")
