@@ -1,5 +1,5 @@
 ---
-title: 'Future Blog Post'
+title: 'Future Blog Post? or not'
 date: 2199-01-01
 permalink: /posts/2199-01-01-future-post_/
 tags:
