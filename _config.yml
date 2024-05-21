@@ -25,7 +25,7 @@ author:
   name             : "Gao Wang"
   pronouns         : # example: "she/her"  
   bio              : "Short biography for the left-hand sidebar"
-  location         : "11 Chapel Ln, Glasgow G11 6EW, UK, Earth"
+  location         : "Glasgow G11 6EW"
   employer         : "University of Glasgow"
   URI              : "https://www.physics.gla.ac.uk/xtremelight/Gao.html" # URL
   email            : "g.wang.4@research.gla.ac.uk" 
@@ -75,7 +75,6 @@ author:
 
 
 # Site Settings
-title: You Blog    				  	#你博客的标题
 teaser                   :  # filename of teaser fallback teaser image placed in /images/, .e.g. "500x300.png"
 breadcrumbs              : false # true, false (default)
 words_per_minute         : 160
