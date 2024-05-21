@@ -7,10 +7,8 @@ rmdir("..\_talks","s")
 mkdir("..\_talks")
 pyrunfile("talks.py")
 
-
 %% proceeding
 open("proceedings.bib")
-
 
 %% journal
 open("pubs.bib")
