@@ -39,6 +39,8 @@ Skills
 * MATLAB
 * FPGA
 * PCB
+* OpenBCI EEG device
+* fNIRS
 
 Publications
 ======
