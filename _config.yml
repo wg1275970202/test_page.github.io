@@ -25,7 +25,7 @@ author:
   name             : "Gao Wang"
   pronouns         : # example: "she/her"  
   bio              : "Short biography for the left-hand sidebar"
-  location         : "Earth"
+  location         : "11 Chapel Ln, Glasgow G11 6EW, UK, Earth"
   employer         : "University of Glasgow"
   URI              : "https://www.physics.gla.ac.uk/xtremelight/Gao.html" # URL
   email            : "g.wang.4@research.gla.ac.uk" 
@@ -43,12 +43,12 @@ author:
   bitbucket        : # Username - Update with your username on the site
   codepen          : # Username
   dribbble         : # Username
-  github           : "academicpages"
+  github           : "wg1275970202"
   kaggle           : # Username  
   stackoverflow    : # User number or user number and name (i.e., use "1" or "1/jeff-atwood")    
 
   # Social media
-  bluesky          : "bsky.app" # Replace this with you Bluesky username
+  bluesky          : # "bsky.app" # Replace this with you Bluesky username
   facebook         : # Username
   flickr           : # Username
   foursquare       : # Username
