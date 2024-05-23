@@ -4,6 +4,7 @@ excerpt: "Short description of portfolio item number 1<br/><img src='/images/500
 collection: portfolio
 ---
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,7 +33,7 @@ collection: portfolio
 </head>
 <body>
   <h1>DOI to BibTeX</h1>
-  <input type="text" id="input-doi" placeholder="Enter DOI">
+  <input type="text" id="input-doi" placeholder="Enter DOI" value="DOI:10.34133/icomputing.0014">
   <br>
   <button onclick="generateBibTeX()">Generate BibTeX</button>
   <br>
@@ -45,43 +46,22 @@ collection: portfolio
         alert('Please enter a valid DOI.');
         return;
       }
-      fetch('https://api.crossref.org/works/' + doi)
-        .then(response => response.json())
+      var api_url = 'https://api.crossref.org/works/' + doi + '/transform/application/x-bibtex';
+      fetch(api_url)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+          }
+          return response.text();
+        })
         .then(data => {
-          var authors = data.message.author.map(author => author.family + ', ' + author.given).join(' and ');
-          var title = data.message.title[0];
-          var journal = data.message['container-title'][0];
+          // Format the BibTeX entry
+          var formatted_entry = data.substring(1).trim();
+          formatted_entry = formatted_entry.replace(/,\s(\w*)=/g, ',\n  $1=');
+          // formatted_entry = formatted_entry.replace('{', '{\n  ');
+          formatted_entry = formatted_entry.replace(/}$/, '\n}\n\n');
           
-          // Check for published-print or published-online
-          var year = data.message['published-print'] ? data.message['published-print']['date-parts'][0][0] : 
-                      (data.message['published-online'] ? data.message['published-online']['date-parts'][0][0] : '');
-
-          var volume = data.message.volume;
-          var issue = data.message.issue;
-          var page = data.message.page;
-          var issn = data.message.ISSN ? data.message.ISSN[0] : '';
-          var doi = data.message.DOI ? data.message.DOI : '';
-          var url = data.message.URL ? data.message.URL : '';
-          var bibTeX = `@article{,
-  author  = "${authors}",
-  title   = "${title.replace(/"/g, '\\"')}", // Escape double quotes
-  journal = "${journal}",
-  year    = "${year}"`;
-          if (volume) bibTeX += `,
-  volume  = "${volume}"`;
-          if (issue) bibTeX += `,
-  number  = "${issue}"`;
-          if (page) bibTeX += `,
-  pages   = "${page}"`;
-          if (issn) bibTeX += `,
-  ISSN    = "${issn}"`;
-          if (doi) bibTeX += `,
-  DOI     = "${doi}"`;
-          if (url) bibTeX += `,
-  url     = "${url}"`;
-          bibTeX += `
-}`;
-          document.getElementById('bib-text').value = bibTeX;
+          document.getElementById('bib-text').value = formatted_entry;
         })
         .catch(error => {
           console.error('Error:', error);
