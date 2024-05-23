@@ -4,13 +4,12 @@ excerpt: "Short description of portfolio item number 1<br/><img src='/images/500
 collection: portfolio
 ---
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Input DOI and generate</title>
+<title>DOI to BibTeX</title>
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -52,7 +51,11 @@ collection: portfolio
           var authors = data.message.author.map(author => author.family + ', ' + author.given).join(' and ');
           var title = data.message.title[0];
           var journal = data.message['container-title'][0];
-          var year = data.message['published-print']['date-parts'][0][0];
+          
+          // Check for published-print or published-online
+          var year = data.message['published-print'] ? data.message['published-print']['date-parts'][0][0] : 
+                      (data.message['published-online'] ? data.message['published-online']['date-parts'][0][0] : '');
+
           var volume = data.message.volume;
           var issue = data.message.issue;
           var page = data.message.page;
@@ -88,3 +91,4 @@ collection: portfolio
   </script>
 </body>
 </html>
+
