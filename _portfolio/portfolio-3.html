@@ -61,6 +61,12 @@ collection: portfolio
           formatted_entry = formatted_entry.replace(/}$/, '\n}\n\n');
           
           document.getElementById('bib-text').value = formatted_entry;
+
+          var bibText = document.getElementById('bib-text');
+          bibText.select();
+          document.execCommand('copy');
+          <!-- alert('BibTeX copied to clipboard!'); -->
+          
         })
         .catch(error => {
           console.error('Error:', error);
