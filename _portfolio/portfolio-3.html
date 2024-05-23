@@ -55,7 +55,7 @@ collection: portfolio
           return response.text();
         })
         .then(data => {
-          // Format the BibTeX entry
+          
           var formatted_entry = data.substring(1).trim();
           formatted_entry = formatted_entry.replace(/,\s(\w*)=/g, ',\n  $1=');
           <!--formatted_entry = formatted_entry.replace('{', '{\n  ');-->
