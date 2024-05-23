@@ -6,7 +6,7 @@ collection: portfolio
 
 
 <!DOCTYPE html>
-<html lang="en">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,6 +31,7 @@ collection: portfolio
   }
 </style>
 </head>
+
 <body>
   <h1>DOI to BibTeX</h1>
   <input type="text" id="input-doi" placeholder="Enter DOI" value="DOI:10.34133/icomputing.0014">
@@ -38,6 +39,7 @@ collection: portfolio
   <button onclick="generateBibTeX()">Generate and Copy BibTeX</button>
   <br>
   <textarea id="bib-text" readonly></textarea>
+</body>
 
   <script>
     function generateBibTeX() {
@@ -74,6 +76,6 @@ collection: portfolio
         });
     }
   </script>
-</body>
+
 </html>
 
