@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Webcam Sudoku Solver</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.2/css/bulma.min.css">
+    <style>
+        html,
+        body {
+            font-size: 16px;
+            font-family: 'Noto Sans Japanese', sans-serif;
+            text-align: center;
+        }
+
+        canvas {
+            border: 1px #333 solid;
+            max-width: 70%;
+            height: auto;
+        }
+
+        video {
+            border: 1px #333 solid;
+            max-width: 70%;
+            height: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Sudoku Solver from Image (Powered by MATLAB)</h1>
+    </header>
+    <span>
+
+        <p><input type="file" accept="image/*" capture="camera" id="selectfile"></p>
+
+        <a href="./index.html">Click here to load from live camera (PC Only)</a>
+
+        <figure>
+            <canvas id="canvas1">Please use a browser that supports Canvas.</canvas>
+            <figcaption>After processing</figcaption>
+        </figure>
+    </span>
+
+    <script async type="text/javascript" src="foo.js"></script>
+    <script async type="text/javascript" src="getSolutionImage.js"></script>
+
+    <script>
+
+        async function main() {
+            // Canvas for display
+            const canvas1 = document.getElementById("canvas1");
+            const ctx1 = canvas1.getContext("2d");
+
+            canvas1.width = 750;
+            canvas1.height = 750;
+
+            // Offscreen Canvas for image processing
+            const offscreen = document.createElement("canvas");
+            const offscreenCtx = offscreen.getContext("2d");
+
+            // Event for file open
+            var ofd = document.getElementById("selectfile");
+            ofd.addEventListener("change", function (evt) {
+                // Input image data here
+                var img = null;
+
+                var file = evt.target.files;
+                var reader = new FileReader();
+
+                // Read file in dataURL format
+                reader.readAsDataURL(file[0]);
+
+                // Process when file reading is complete
+                reader.onload = function () {
+                    img = new Image();
+                    img.onload = function () {
+                        /* Process and display image here after loading */
+                        // Set image to canvas
+                        offscreen.width = 750;
+                        offscreen.height = 750;
+                        offscreenCtx.drawImage(img, 0, 0, offscreen.width, offscreen.height);
+
+                        // Get image data [r,g,b,a,r,g,b,a,...]
+                        const imageData = offscreenCtx.getImageData(0, 0, offscreen.width, offscreen.height);
+
+                        getSolImage(imageData.data);
+
+                        // Update offscreen Canvas
+                        offscreenCtx.putImageData(imageData, 0, 0, 0, 0, offscreen.width, offscreen.height);
+
+                        // Draw on display Canvas
+                        ctx1.drawImage(offscreen, 0, 0, offscreen.width, offscreen.height, 0, 0, offscreen.width, offscreen.width);
+
+                    }
+                    // Set the loaded image source
+                    img.src = reader.result;
+                }
+            }, false);
+
+        }
+
+        main();
+
+    </script>
+
+
+</body>
+
+</html>
