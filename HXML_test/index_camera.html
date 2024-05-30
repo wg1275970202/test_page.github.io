@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Exposure Control</title>
+</head>
+<body>
+    <h1>Camera Exposure Control</h1>
+    <video id="video" width="320" height="240" autoplay></video>
+    <br>
+    <label for="exposure">Exposure Time (ms):</label>
+    <input type="number" id="exposure" name="exposure" min="1" max="10000" value="100">
+    <br>
+    <button id="captureButton">Capture Photo</button>
+    <canvas id="canvas" width="320" height="240"></canvas>
+
+    <script src="index_camera.js"></script>
+</body>
+</html>
