@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashing Rectangle and Microphone Recording</title>
+    <style>
+        #rectangle {
+            width: 200px;
+            height: 200px;
+            margin: 20px;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #rectangle::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+        }
+        canvas {
+            border: 1px solid black;
+            margin-top: 20px;
+        }
+    </style>
+    <!-- Include FFT.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/fft.js/dist/fft.min.js"></script>
+</head>
+<body>
+    <div>
+        <label for="duration">Duration (seconds): </label>
+        <input type="number" id="duration" min="1" step="1">
+    </div>
+    <div>
+        <label for="frequency">Frequency (Hz): </label>
+        <input type="number" id="frequency" min="0.1" step="0.1">
+    </div>
+    <button id="startButton">Start</button>
+    <button id="stopButton">Stop</button>
+    <div id="rectangle"></div>
+    <canvas id="waveformCanvas" width="800" height="200"></canvas>
+    <canvas id="spectrumCanvas" width="800" height="200"></canvas>
+
+    <script>
+        let rectangle = document.getElementById('rectangle');
+        let durationInput = document.getElementById('duration');
+        let frequencyInput = document.getElementById('frequency');
+        let startButton = document.getElementById('startButton');
+        let stopButton = document.getElementById('stopButton');
+        let waveformCanvas = document.getElementById('waveformCanvas');
+        let waveformCtx = waveformCanvas.getContext('2d');
+        let spectrumCanvas = document.getElementById('spectrumCanvas');
+        let spectrumCtx = spectrumCanvas.getContext('2d');
+        let audioContext, mediaRecorder, audioChunks = [];
+
+        function flashRectangle(duration, frequency) {
+            let startTime = Date.now();
+            function flash() {
+                let elapsedTime = (Date.now() - startTime) / 1000;
+                let intensity = (Math.cos(2 * Math.PI * frequency * elapsedTime) + 1) / 2 * 255;
+                rectangle.style.backgroundColor = `rgb(${intensity}, ${intensity}, ${intensity})`;
+                if (elapsedTime < duration) {
+                    requestAnimationFrame(flash);
+                } else {
+                    rectangle.style.backgroundColor = 'white';
+                }
+            }
+            flash();
+        }
+
+        function recordAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                mediaRecorder.onstop = analyzeAudio;
+                mediaRecorder.start();
+            });
+        }
+
+        function analyzeAudio() {
+            let audioBlob = new Blob(audioChunks);
+            let reader = new FileReader();
+            reader.readAsArrayBuffer(audioBlob);
+            reader.onloadend = () => {
+                audioContext.decodeAudioData(reader.result, buffer => {
+                    let data = buffer.getChannelData(0);
+                    plotWaveform(data, buffer.sampleRate);
+                    plotSpectrum(data, buffer.sampleRate);
+                });
+            };
+        }
+
+        function plotWaveform(data, sampleRate) {
+            waveformCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+            waveformCtx.beginPath();
+            let duration = parseFloat(durationInput.value);
+            let step = Math.ceil(data.length / waveformCanvas.width);
+            for (let i = 0; i < data.length; i += step) {
+                let x = (i / data.length) * waveformCanvas.width;
+                let y = (1 - data[i]) * waveformCanvas.height / 2;
+                waveformCtx.lineTo(x, y);
+            }
+            waveformCtx.stroke();
+            waveformCtx.font = '12px Arial';
+            waveformCtx.fillText('Amplitude', 10, 10);
+
+            waveformCtx.beginPath();
+            waveformCtx.moveTo(0, waveformCanvas.height - 20);
+            waveformCtx.lineTo(waveformCanvas.width, waveformCanvas.height - 20);
+            waveformCtx.stroke();
+
+            for (let i = 0; i <= duration; i++) {
+                let x = (i / duration) * waveformCanvas.width;
+                waveformCtx.moveTo(x, waveformCanvas.height - 20);
+                waveformCtx.lineTo(x, waveformCanvas.height - 10);
+                waveformCtx.fillText(i.toString(), x, waveformCanvas.height - 5);
+            }
+            waveformCtx.fillText('Time (s)', waveformCanvas.width - 50, waveformCanvas.height - 5);
+        }
+
+        function plotSpectrum(data, sampleRate) {
+            let duration = parseFloat(durationInput.value);
+            let fftSize = Math.pow(2, Math.ceil(Math.log2(data.length)));
+            let fft = new FFT(fftSize);
+            let real = new Float32Array(fftSize);
+            let imag = new Float32Array(fftSize);
+            data.slice(0, fftSize).forEach((v, i) => real[i] = v);
+            fft.transform(real, imag);
+
+            let spectrum = new Float32Array(fftSize / 2);
+            let nyquist = sampleRate / 2;
+            for (let i = 0; i < fftSize / 2; i++) {
+                spectrum[i] = Math.sqrt(real[i] ** 2 + imag[i] ** 2);
+            }
+
+            spectrumCtx.clearRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
+            spectrumCtx.beginPath();
+            for (let i = 1; i <= 45; i++) {
+                let x = (i / 45) * spectrumCanvas.width;
+                let y = spectrumCanvas.height - (spectrum[Math.round(i / nyquist * (fftSize / 2))] * 50);
+                spectrumCtx.lineTo(x, y);
+            }
+            spectrumCtx.stroke();
+            spectrumCtx.font = '12px Arial';
+            spectrumCtx.fillText('Spectrum', 10, 10);
+
+            spectrumCtx.beginPath();
+            spectrumCtx.moveTo(0, spectrumCanvas.height - 20);
+            spectrumCtx.lineTo(spectrumCanvas.width, spectrumCanvas.height - 20);
+            spectrumCtx.stroke();
+
+            for (let i = 1; i <= 45; i++) {
+                let x = (i / 45) * spectrumCanvas.width;
+                spectrumCtx.moveTo(x, spectrumCanvas.height - 20);
+                spectrumCtx.lineTo(x, spectrumCanvas.height - 10);
+                spectrumCtx.fillText(i.toString(), x, spectrumCanvas.height - 5);
+            }
+            spectrumCtx.fillText('Frequency (Hz)', spectrumCanvas.width - 70, spectrumCanvas.height - 5);
+        }
+
+        startButton.addEventListener('click', () => {
+            audioChunks = [];
+            let duration = parseFloat(durationInput.value);
+            let frequency = parseFloat(frequencyInput.value);
+            recordAudio();
+            flashRectangle(duration, frequency);
+            setTimeout(() => {
+                mediaRecorder.stop();
+            }, (duration+0.1) * 1000);
+        });
+
+        stopButton.addEventListener('click', () => {
+            mediaRecorder.stop();
+        });
+    </script>
+</body>
+</html>
