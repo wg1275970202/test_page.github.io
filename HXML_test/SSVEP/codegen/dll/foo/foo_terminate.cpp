@@ -2,11 +2,12 @@
 // File: foo_terminate.cpp
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 03-Aug-2024 13:00:50
+// C/C++ source code generated on  : 03-Aug-2024 13:53:25
 //
 
 // Include Files
 #include "foo_terminate.h"
+#include "rt_nonfinite.h"
 
 // Function Definitions
 //

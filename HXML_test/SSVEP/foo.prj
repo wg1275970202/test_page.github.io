@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.coder" plugin-version="R2023a">
-  <configuration build-checksum="3214159151" file="D:\Github\wg1275970202.github.io\HXML_test\SSVEP\foo.prj" location="D:\Github\wg1275970202.github.io\HXML_test\SSVEP" name="foo" target="target.unifiedcoder" target-name="MATLAB Coder">
+  <configuration build-checksum="1878668458" file="D:\Github\wg1275970202.github.io\HXML_test\SSVEP\foo.prj" location="D:\Github\wg1275970202.github.io\HXML_test\SSVEP" name="foo" target="target.unifiedcoder" target-name="MATLAB Coder">
     <profile key="profile.mex">
       <param.BuiltInstrumentedMex />
       <param.RanInstrumentedMex>false</param.RanInstrumentedMex>
@@ -182,7 +182,7 @@
       <param.SpecifiedBuildFolder />
       <param.SearchPaths />
       <var.SimdQueryHardwareVendor>Google</var.SimdQueryHardwareVendor>
-      <var.SimdQueryHardwareType />
+      <var.SimdQueryHardwareType>V8 Engine</var.SimdQueryHardwareType>
       <param.InstructionSetExtensionsAvailableInUI>false</param.InstructionSetExtensionsAvailableInUI>
       <param.InstructionSetExtensions>None</param.InstructionSetExtensions>
       <param.SaturateOnIntegerOverflow>true</param.SaturateOnIntegerOverflow>
@@ -328,8 +328,8 @@
       <param.HardwareSizeLongLong.Target>64</param.HardwareSizeLongLong.Target>
       <param.HardwareSizeFloat.Target>32</param.HardwareSizeFloat.Target>
       <param.HardwareSizeDouble.Target>64</param.HardwareSizeDouble.Target>
-      <param.HardwareSizeWord.Target>32</param.HardwareSizeWord.Target>
-      <param.HardwareSizePointer.Target>32</param.HardwareSizePointer.Target>
+      <param.HardwareSizeWord.Target>64</param.HardwareSizeWord.Target>
+      <param.HardwareSizePointer.Target>64</param.HardwareSizePointer.Target>
       <param.HardwareSizeSizeT.Target>64</param.HardwareSizeSizeT.Target>
       <param.HardwareSizePtrDiffT.Target>64</param.HardwareSizePtrDiffT.Target>
       <param.HardwareEndianness.Target>option.HardwareEndianness.Little</param.HardwareEndianness.Target>
@@ -529,8 +529,6 @@
         <param.HardwareSizeLongLong.Target />
         <param.HardwareSizeFloat.Target />
         <param.HardwareSizeDouble.Target />
-        <param.HardwareSizeWord.Target />
-        <param.HardwareSizePointer.Target />
         <param.HardwareEndianness.Target />
         <var.SuppressHardwareChange />
         <param.CastingMode />
@@ -590,6 +588,8 @@
     <param.objective>option.objective.c</param.objective>
     <param.WorkflowStep>generateCode</param.WorkflowStep>
     <param.TestSnippets>
+      <item>C=foo(rand(1,48000),1)</item>
+      <item>C=foo(single(rand(1,48000)),1)</item>
       <item>C=foo(single(rand(1,48000)))</item>
       <item>foo(single(rand(1,48000)))</item>
     </param.TestSnippets>
@@ -615,7 +615,7 @@
     <param.AutoInferUnboundedSizeThreshold>2048</param.AutoInferUnboundedSizeThreshold>
     <param.EnableFixedPointStep>false</param.EnableFixedPointStep>
     <param.EnableScreener>true</param.EnableScreener>
-    <param.AnnotationChecksum>4038323655</param.AnnotationChecksum>
+    <param.AnnotationChecksum>2665649687</param.AnnotationChecksum>
     <var.LegacyTarget />
     <var.MirrorOnOpen>false</var.MirrorOnOpen>
     <param.FixedPointEnabled>false</param.FixedPointEnabled>
@@ -625,12 +625,12 @@
     <param.hdlParamStorage />
     <var.gc.lastOutputRoot>codegen\dll\foo</var.gc.lastOutputRoot>
     <var.gc.lastOutputType>SHARED_LIBRARY</var.gc.lastOutputType>
-    <var.gc.preBuildChecksum>3570222198</var.gc.preBuildChecksum>
+    <var.gc.preBuildChecksum>3580323135</var.gc.preBuildChecksum>
     <var.cfi.lastOutputRoot>codegen\mex\foo</var.cfi.lastOutputRoot>
     <var.cfi.preBuildChecksum>2745397059</var.cfi.preBuildChecksum>
     <var.lastCfiTestSnippet>foo(single(rand(1,48000)))</var.lastCfiTestSnippet>
     <var.outdatedOnRestore>false</var.outdatedOnRestore>
-    <var.lastUserSourceChecksum>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;&lt;checksum&gt;&lt;includedFiles&gt;&lt;file&gt;D:\Github\wg1275970202.github.io\HXML_test\SSVEP\foo.m&lt;/file&gt;&lt;/includedFiles&gt;&lt;value&gt;3839005152&lt;/value&gt;&lt;/checksum&gt;</var.lastUserSourceChecksum>
+    <var.lastUserSourceChecksum>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;&lt;checksum&gt;&lt;includedFiles&gt;&lt;file&gt;D:\Github\wg1275970202.github.io\HXML_test\SSVEP\foo.m&lt;/file&gt;&lt;/includedFiles&gt;&lt;value&gt;1934044586&lt;/value&gt;&lt;/checksum&gt;</var.lastUserSourceChecksum>
     <var.sourceSetState>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;&lt;sourceModel&gt;&lt;primarySourceFiles&gt;&lt;file&gt;D:\Github\wg1275970202.github.io\HXML_test\SSVEP\foo.m&lt;/file&gt;&lt;/primarySourceFiles&gt;&lt;fixedPointSourceFiles/&gt;&lt;fixedPointSourceRegistered&gt;false&lt;/fixedPointSourceRegistered&gt;&lt;fixedPointSourceSelected&gt;false&lt;/fixedPointSourceSelected&gt;&lt;/sourceModel&gt;</var.sourceSetState>
     <param.forceMexBuild>false</param.forceMexBuild>
     <param.NoDefaultJIT>false</param.NoDefaultJIT>
@@ -883,7 +883,7 @@
     </unset>
     <fileset.entrypoints>
       <file custom-data-expanded="false" value="${PROJECT_ROOT}\foo.m">
-        <Marker>1722678671788</Marker>
+        <Marker>1722687791727</Marker>
       </file>
     </fileset.entrypoints>
     <fileset.testbench />
@@ -891,9 +891,19 @@
       <file custom-data-expanded="false" value="${PROJECT_ROOT}\foo.m">
         <Inputs fileName="foo.m" functionName="foo">
           <Input Name="input" typeId="0" />
+          <Input Name="duration" typeId="1" />
           <idpTable>
             <type typeId="0">
-              <Class>&lt;Undefined&gt;</Class>
+              <Class>double</Class>
+              <Size>1 x 48000</Size>
+              <Value />
+              <InitialValue />
+              <UserDefined>false</UserDefined>
+              <Complex>false</Complex>
+              <Sparse>false</Sparse>
+            </type>
+            <type typeId="1">
+              <Class>double</Class>
               <Size>1 x 1</Size>
               <Value />
               <InitialValue />

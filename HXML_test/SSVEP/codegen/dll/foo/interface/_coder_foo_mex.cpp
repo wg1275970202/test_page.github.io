@@ -2,7 +2,7 @@
 // File: _coder_foo_mex.cpp
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 03-Aug-2024 13:00:50
+// C/C++ source code generated on  : 03-Aug-2024 13:53:25
 //
 
 // Include Files
@@ -44,22 +44,23 @@ emlrtCTX mexFunctionCreateRootTLS()
 // Arguments    : int32_T nlhs
 //                mxArray *plhs[1]
 //                int32_T nrhs
-//                const mxArray *prhs[1]
+//                const mxArray *prhs[2]
 // Return Type  : void
 //
 void unsafe_foo_mexFunction(int32_T nlhs, mxArray *plhs[1], int32_T nrhs,
-                            const mxArray *prhs[1])
+                            const mxArray *prhs[2])
 {
   emlrtStack st{
       nullptr, // site
       nullptr, // tls
       nullptr  // prev
   };
+  const mxArray *b_prhs[2];
   const mxArray *outputs;
   st.tls = emlrtRootTLSGlobal;
   // Check for proper number of arguments.
-  if (nrhs != 1) {
-    emlrtErrMsgIdAndTxt(&st, "EMLRT:runTime:WrongNumberOfInputs", 5, 12, 1, 4,
+  if (nrhs != 2) {
+    emlrtErrMsgIdAndTxt(&st, "EMLRT:runTime:WrongNumberOfInputs", 5, 12, 2, 4,
                         3, "foo");
   }
   if (nlhs > 1) {
@@ -67,7 +68,9 @@ void unsafe_foo_mexFunction(int32_T nlhs, mxArray *plhs[1], int32_T nrhs,
                         "foo");
   }
   // Call the function.
-  foo_api(prhs[0], &outputs);
+  b_prhs[0] = prhs[0];
+  b_prhs[1] = prhs[1];
+  foo_api(b_prhs, &outputs);
   // Copy over outputs to the caller.
   emlrtReturnArrays(1, &plhs[0], &outputs);
 }

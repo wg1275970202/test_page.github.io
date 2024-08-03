@@ -2,7 +2,7 @@
 // File: _coder_foo_info.cpp
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 03-Aug-2024 13:00:50
+// C/C++ source code generated on  : 03-Aug-2024 13:53:25
 //
 
 // Include Files
@@ -52,10 +52,10 @@ mxArray *emlrtMexFcnProperties()
       "FullPath", "TimeStamp",      "Constructor",     "Visible"};
   xEntryPoints =
       emlrtCreateStructMatrix(1, 1, 8, (const char_T **)&epFieldName[0]);
-  xInputs = emlrtCreateLogicalMatrix(1, 1);
+  xInputs = emlrtCreateLogicalMatrix(1, 2);
   emlrtSetField(xEntryPoints, 0, "Name", emlrtMxCreateString("foo"));
   emlrtSetField(xEntryPoints, 0, "NumberOfInputs",
-                emlrtMxCreateDoubleScalar(1.0));
+                emlrtMxCreateDoubleScalar(2.0));
   emlrtSetField(xEntryPoints, 0, "NumberOfOutputs",
                 emlrtMxCreateDoubleScalar(1.0));
   emlrtSetField(xEntryPoints, 0, "ConstantInputs", xInputs);
@@ -64,7 +64,7 @@ mxArray *emlrtMexFcnProperties()
       emlrtMxCreateString(
           "D:\\Github\\wg1275970202.github.io\\HXML_test\\SSVEP\\foo.m"));
   emlrtSetField(xEntryPoints, 0, "TimeStamp",
-                emlrtMxCreateDoubleScalar(739467.5422222222));
+                emlrtMxCreateDoubleScalar(739467.57870370371));
   emlrtSetField(xEntryPoints, 0, "Constructor",
                 emlrtMxCreateLogicalScalar(false));
   emlrtSetField(xEntryPoints, 0, "Visible", emlrtMxCreateLogicalScalar(true));

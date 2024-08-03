@@ -44,7 +44,7 @@
         <input type="number" id="frequency" min="0.1" step="0.1" value="2">
     </div>
     <button id="startButton">Start</button>
-    <button id="stopButton">Stop</button>
+    <!-- <button id="stopButton">Stop</button> -->
     <div id="rectangle"></div>
 
     <svg width="800" height="200" id="waveformSVG" class="svgs"></svg>
@@ -63,7 +63,7 @@
         let durationInput = document.getElementById('duration');
         let frequencyInput = document.getElementById('frequency');
         let startButton = document.getElementById('startButton');
-        let stopButton = document.getElementById('stopButton');
+        // let stopButton = document.getElementById('stopButton');
         let waveformSVG = d3.select("#waveformSVG");
         let spectrumSVG = d3.select("#spectrumSVG");
         let audioContext, mediaRecorder, audioChunks = [];
@@ -109,6 +109,18 @@
             };
         }
 
+        function getMinMax(data) {
+            let min = Infinity;
+            let max = -Infinity;
+
+            for (let i = 0; i < data.length; i++) {
+                if (data[i] < min) min = data[i];
+                if (data[i] > max) max = data[i];
+            }
+
+            return { min, max };
+        }
+
         function plotWaveform(data, sampleRate) {
 
             const width = +waveformSVG.attr('width');
@@ -117,12 +129,16 @@
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = height - margin.top - margin.bottom;
 
+
+
+            let { min, max } = getMinMax(data);
+
             const xScale = d3.scaleLinear()
                 .domain([0, data.length / sampleRate * 1000]) // Time in milliseconds
                 .range([0, innerWidth]);
 
             const yScale = d3.scaleLinear()
-                .domain([Math.min(...data), Math.max(...data)])
+                .domain([min, max])
                 .range([innerHeight, 0]);
 
             waveformSVG.selectAll('*').remove(); // Clear previous contents
@@ -164,18 +180,18 @@
             let duration = parseFloat(durationInput.value);
             let fftSize = Math.pow(2, Math.ceil(Math.log2(data.length)));
 
-            let data_ = data.subarray(0, 48000*duration);
-            // data_[data_.length]=48000*duration;
-
-            // let length = Math.ceil(data_.length / 48);
-            // let sampledData = new Float32Array(length);
-
-            // for (let i = 0; i < length; i++) {
-            //     sampledData[i] = data_[i * interval];
-            // }
+            let data_ = data.subarray(0, 48000 * duration);
 
 
-            let data_out_all = getSolImage(data_);
+            let interval = 48;
+            let length = Math.ceil(data_.length / interval);
+            let sampledData = new Float32Array(length);
+            for (let i = 0; i < length; i++) {
+                sampledData[i] = data_[i * interval];
+            }
+
+
+            let data_out_all = getSolImage(sampledData, duration);
 
             let n = 100;
 
@@ -248,9 +264,9 @@
             }, (duration + 0.1) * 1000);
         });
 
-        stopButton.addEventListener('click', () => {
-            mediaRecorder.stop();
-        });
+        // stopButton.addEventListener('click', () => {
+        //     mediaRecorder.stop();
+        // });
     </script>
 </body>
 

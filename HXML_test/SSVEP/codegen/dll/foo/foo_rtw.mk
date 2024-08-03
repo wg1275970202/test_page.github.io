@@ -2,7 +2,7 @@
 ## Makefile generated for component 'foo'. 
 ## 
 ## Makefile     : foo_rtw.mk
-## Generated on : Sat Aug 03 13:00:57 2024
+## Generated on : Sat Aug 03 13:17:09 2024
 ## Final product: ./foo.js
 ## Product type : dynamic-library
 ## 
@@ -160,7 +160,7 @@ DEFINES = $(DEFINES_) $(DEFINES_CUSTOM) $(DEFINES_STANDARD)
 ## SOURCE FILES
 ###########################################################################
 
-SRCS = $(START_DIR)/codegen/dll/foo/foo_initialize.cpp $(START_DIR)/codegen/dll/foo/foo_terminate.cpp $(START_DIR)/codegen/dll/foo/foo.cpp
+SRCS = $(START_DIR)/codegen/dll/foo/rt_nonfinite.cpp $(START_DIR)/codegen/dll/foo/rtGetNaN.cpp $(START_DIR)/codegen/dll/foo/rtGetInf.cpp $(START_DIR)/codegen/dll/foo/foo_initialize.cpp $(START_DIR)/codegen/dll/foo/foo_terminate.cpp $(START_DIR)/codegen/dll/foo/foo.cpp
 
 ALL_SRCS = $(SRCS)
 
@@ -168,7 +168,7 @@ ALL_SRCS = $(SRCS)
 ## OBJECTS
 ###########################################################################
 
-OBJS = foo_initialize.o foo_terminate.o foo.o
+OBJS = rt_nonfinite.o rtGetNaN.o rtGetInf.o foo_initialize.o foo_terminate.o foo.o
 
 ALL_OBJS = $(OBJS)
 
@@ -320,6 +320,18 @@ $(PRODUCT) : $(OBJS) $(PREBUILT_OBJS)
 
 
 %.o : $(START_DIR)/%.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+rt_nonfinite.o : $(START_DIR)/codegen/dll/foo/rt_nonfinite.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+rtGetNaN.o : $(START_DIR)/codegen/dll/foo/rtGetNaN.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+rtGetInf.o : $(START_DIR)/codegen/dll/foo/rtGetInf.cpp
 	$(CPP) $(CPPFLAGS) -o "$@" "$<"
 
 

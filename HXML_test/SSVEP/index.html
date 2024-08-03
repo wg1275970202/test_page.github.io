@@ -44,7 +44,7 @@
         <input type="number" id="frequency" min="0.1" step="0.1" value="2">
     </div>
     <button id="startButton">Start</button>
-    <button id="stopButton">Stop</button>
+    <!-- <button id="stopButton">Stop</button> -->
     <div id="rectangle"></div>
 
     <svg width="800" height="200" id="waveformSVG" class="svgs"></svg>
@@ -63,7 +63,7 @@
         let durationInput = document.getElementById('duration');
         let frequencyInput = document.getElementById('frequency');
         let startButton = document.getElementById('startButton');
-        let stopButton = document.getElementById('stopButton');
+        // let stopButton = document.getElementById('stopButton');
         let waveformSVG = d3.select("#waveformSVG");
         let spectrumSVG = d3.select("#spectrumSVG");
         let audioContext, mediaRecorder, audioChunks = [];
@@ -248,9 +248,9 @@
             }, (duration + 0.1) * 1000);
         });
 
-        stopButton.addEventListener('click', () => {
-            mediaRecorder.stop();
-        });
+        // stopButton.addEventListener('click', () => {
+        //     mediaRecorder.stop();
+        // });
     </script>
 </body>
 

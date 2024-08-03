@@ -2,7 +2,7 @@
 // File: main.cpp
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 03-Aug-2024 13:00:50
+// C/C++ source code generated on  : 03-Aug-2024 13:53:25
 //
 
 /*************************************************************************/
@@ -34,34 +34,35 @@
 #include "main.h"
 #include "foo.h"
 #include "foo_terminate.h"
+#include "rt_nonfinite.h"
 
 // Function Declarations
-static void argInit_1x96000_real_T(double result[96000]);
+static void argInit_1x30000_real32_T(float result[30000]);
 
-static double argInit_real_T();
+static float argInit_real32_T();
 
 // Function Definitions
 //
-// Arguments    : double result[96000]
+// Arguments    : float result[30000]
 // Return Type  : void
 //
-static void argInit_1x96000_real_T(double result[96000])
+static void argInit_1x30000_real32_T(float result[30000])
 {
   // Loop over the array to initialize each element.
-  for (int idx1{0}; idx1 < 96000; idx1++) {
+  for (int idx1{0}; idx1 < 30000; idx1++) {
     // Set the value of the array element.
     // Change this value to the value that the application requires.
-    result[idx1] = argInit_real_T();
+    result[idx1] = argInit_real32_T();
   }
 }
 
 //
 // Arguments    : void
-// Return Type  : double
+// Return Type  : float
 //
-static double argInit_real_T()
+static float argInit_real32_T()
 {
-  return 0.0;
+  return 0.0F;
 }
 
 //
@@ -88,13 +89,13 @@ int main(int, char **)
 //
 void main_foo()
 {
-  static double dv[96000];
-  double B[200];
+  float fv[30000];
+  float B[200];
   // Initialize function 'foo' input arguments.
   // Initialize function input argument 'input'.
   // Call the entry-point 'foo'.
-  argInit_1x96000_real_T(dv);
-  foo(dv, B);
+  argInit_1x30000_real32_T(fv);
+  foo(fv, argInit_real32_T(), B);
 }
 
 //

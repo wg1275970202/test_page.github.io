@@ -1,7 +1,7 @@
-function B = foo(input)
+function B = foo(input,duration)
 
-[Y,F_temp]=periodogram(input(1:48:end),[],0:99,1000);
+[Y,F_temp]=periodogram(input(1:duration*1000),[],0:99,1000);
 Y=Y./max(Y);
-B=[F_temp,Y];
+B=single([F_temp,Y]);
 
 end
