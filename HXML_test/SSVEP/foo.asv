@@ -1,0 +1,4 @@
+function B = foo(input)
+B=ones(size(input));
+B(1)=length();
+end
