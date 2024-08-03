@@ -2,7 +2,7 @@
 // File: _coder_foo_api.h
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 03-Aug-2024 13:53:25
+// C/C++ source code generated on  : 03-Aug-2024 13:56:33
 //
 
 #ifndef _CODER_FOO_API_H
