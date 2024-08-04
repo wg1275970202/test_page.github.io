@@ -6,6 +6,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flashing Rectangle and Microphone Recording</title>
     <style>
+        /* 定义背景颜色 */
+        body {
+            background-color: #f0f0f0;
+        }
+
+        /* 设置标题的样式 */
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        /* 设置段落的样式 */
+        p {
+            font-size: 18px;
+            line-height: 1.6;
+            margin: 20px;
+        }
+
+        /* 页面容器样式 */
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* height: 50vh; */
+            /* 使容器高度充满视口 */
+            position: relative;
+        }
+
+
+        .container_right {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            /* 修改为 flex-end */
+            align-items: flex-end;
+            /* 修改为 flex-end */
+            position: relative;
+        }
+
+        .container_left {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            /* 左对齐 */
+            align-items: flex-start;
+            /* 左对齐 */
+            position: relative;
+        }
+
+        .container2 {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            /* height: 50vh; */
+            /* 使容器高度充满视口 */
+            position: relative;
+        }
+
+        /* #rectangle 样式 */
         #rectangle {
             width: 200px;
             height: 200px;
@@ -14,8 +74,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            border: 1px solid #ccc;
+            /* Optional: for visual separation */
         }
 
+        /* #rectangle 的伪元素 */
         #rectangle::after {
             content: '';
             width: 10px;
@@ -26,25 +89,44 @@
 
         .svgs {
             border: 1px solid #ccc;
+            margin: 20px 0;
+            /* 添加上下间隙 */
         }
     </style>
+
     <script src="https://cdn.bootcdn.net/ajax/libs/d3/5.9.7/d3.js"></script>
 </head>
 
 <body>
-    <div>
-        <label for="duration">Duration (seconds): </label>
-        <input type="number" id="duration" min="1" step="1" value="2">
-    </div>
-    <div>
-        <label for="frequency">Frequency (Hz): </label>
-        <input type="number" id="frequency" min="0.1" step="0.1" value="2">
-    </div>
-    <button id="startButton">Start</button>
-    <div id="rectangle"></div>
 
-    <svg width="800" height="200" id="waveformSVG" class="svgs"></svg>
-    <svg width="800" height="200" id="spectrumSVG" class="svgs"></svg>
+    <div class="container">
+        <div id="rectangle"></div>
+    </div>
+
+    <div class="container2">
+
+        <div class="container_right">
+
+            <div>
+                <label for="duration">Duration(s): </label>
+                <input type="number" id="duration" min="1" step="1" value="2">
+            </div>
+
+            <div>
+                <label for="frequency">Frequency (Hz): </label>
+                <input type="number" id="frequency" min="0.1" step="0.1" value="6">
+            </div>
+            <div>
+                <button id="startButton">Start</button>
+            </div>
+
+        </div>
+
+        <div>
+            <svg width="400" height="200" id="waveformSVG" class="svgs"></svg>
+            <svg width="400" height="200" id="spectrumSVG" class="svgs"></svg>
+        </div>
+    </div>
 
     <script async type="text/javascript" src="foo.js"></script>
     <script async type="text/javascript" src="getSolutionImage.js"></script>
@@ -63,7 +145,7 @@
 
         // Function to flash the rectangle
         function flashRectangle(duration, frequency, startTime) {
-            function flash() {//
+            function flash() {
                 const elapsedTime = audioContext.currentTime - startTime;
                 const intensity = (Math.cos(2 * Math.PI * frequency * elapsedTime) + 1) / 2 * 255;
                 rectangle.style.backgroundColor = `rgb(${intensity}, ${intensity}, ${intensity})`;
@@ -107,20 +189,21 @@
                     const x = Array.from(t);
                     const y = Array.from(data);
 
-                    const customTickFormat_1 = d => `${(d * 1000).toFixed(0)} ms`;
-                    plot_(x, y, waveformSVG, customTickFormat_1);
+                    const customTickFormat_1 = d => `${(d).toFixed(1)} s`;
+                    plot_(x, y, waveformSVG, customTickFormat_1, 'Waveform', 'Time (s)', 'Amplitude');
 
                     const customTickFormat_2 = d => `${(d).toFixed(0)} Hz`;
-                    plot_(frequency, magnitude, spectrumSVG, customTickFormat_2);
+                    plot_(frequency, magnitude, spectrumSVG, customTickFormat_2, 'Spectrum', 'Frequency (Hz)', 'Magnitude');
+
                 });
             };
         }
 
         // Function to plot data using D3
-        function plot_(x, y, plot_SVG, tickFormatFunction) {
+        function plot_(x, y, plot_SVG, tickFormatFunction, title, xAxisLabel, yAxisLabel) {
             const width = +plot_SVG.attr('width');
             const height = +plot_SVG.attr('height');
-            const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+            const margin = { top: 40, right: 20, bottom: 50, left: 70 }; // 增加底部和左侧的边距
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = height - margin.top - margin.bottom;
 
@@ -172,13 +255,28 @@
                 .attr('stroke', 'blue')
                 .attr('stroke-width', 1);
 
-            // Add a label
+            // Add a title
             g.append('text')
-                .text('Plot')
-                .attr('font-size', '1em')
-                .attr('transform', `translate(${innerWidth / 2}, ${innerHeight + 40})`)
+                .text(title)
+                .attr('font-size', '1.2em')
+                .attr('transform', `translate(${innerWidth / 2}, -10)`)
                 .attr('text-anchor', 'middle');
+
+            // Add X-axis label
+            g.append('text')
+                .attr('class', 'x axis-label')
+                .attr('text-anchor', 'middle')
+                .attr('transform', `translate(${innerWidth / 2}, ${innerHeight + 35})`) // 调整标签位置
+                .text(xAxisLabel);
+
+            // Add Y-axis label
+            g.append('text')
+                .attr('class', 'y axis-label')
+                .attr('text-anchor', 'middle')
+                .attr('transform', `translate(-45, ${innerHeight / 2}) rotate(-90)`) // 调整标签位置和旋转
+                .text(yAxisLabel);
         }
+
 
         // New function to start recording and flashing simultaneously
         async function startRecordingAndFlashing(duration, frequency) {
@@ -193,7 +291,7 @@
             mediaRecorder.onstop = analyzeAudio;
 
             const startTime = audioContext.currentTime;
-            const stopTime = startTime + duration +0.1;
+            const stopTime = startTime + duration + 0.1;
 
             mediaRecorder.start();
             flashRectangle(duration, frequency, startTime);
