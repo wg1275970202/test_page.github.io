@@ -6,125 +6,138 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flashing Rectangle and EEG Recording</title>
     <style>
-        /* 定义背景颜色 */
+        /* 背景样式 */
         body {
-            background-color: #f0f0f0;
+            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
         }
 
-        /* 设置标题的样式 */
+        /* 页面标题 */
         h1 {
-            color: #333;
+            color: #444;
             text-align: center;
+            margin-top: 20px;
         }
 
-        /* 设置段落的样式 */
+        /* 段落样式 */
         p {
             font-size: 18px;
             line-height: 1.6;
             margin: 20px;
+            color: #555;
         }
 
-        /* 页面容器样式 */
+        /* 容器样式 */
         .container {
             display: flex;
             justify-content: center;
             align-items: center;
-            /* height: 50vh; */
-            /* 使容器高度充满视口 */
-            position: relative;
+            flex-direction: column;
+            padding: 20px;
         }
 
+        .container_right, .container_left {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px; /* 增加间隔 */
+            margin-bottom: 20px;
+        }
 
         .container_right {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            /* 修改为 flex-end */
-            align-items: flex-end;
-            /* 修改为 flex-end */
-            position: relative;
+            align-items: flex-end; /* 右对齐 */
         }
 
-        .container_left {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            /* 左对齐 */
-            align-items: flex-start;
-            /* 左对齐 */
-            position: relative;
+        /* 控件样式 */
+        input[type="number"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
         }
 
-        .container2 {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            /* height: 50vh; */
-            /* 使容器高度充满视口 */
-            position: relative;
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
         }
 
-        /* #rectangle 样式 */
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* 图形样式 */
+        .svgs {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 矩形样式 */
         #rectangle {
             width: 200px;
             height: 200px;
-            margin: 20px;
             background-color: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
             display: flex;
             justify-content: center;
             align-items: center;
-            border: 1px solid #ccc;
-            /* Optional: for visual separation */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            margin: 20px;
         }
 
-        /* #rectangle 的伪元素 */
         #rectangle::after {
             content: '';
-            width: 10px;
-            height: 10px;
+            width: 15px;
+            height: 15px;
             background-color: red;
             border-radius: 50%;
         }
 
-        .svgs {
-            border: 1px solid #ccc;
-            margin: 20px 0;
-            /* 添加上下间隙 */
+        /* 图表标题和标签样式 */
+        .x.axis-label, .y.axis-label {
+            font-size: 12px;
+            fill: #333;
         }
     </style>
-
     <script src="https://cdn.bootcdn.net/ajax/libs/d3/5.9.7/d3.js"></script>
 </head>
 
 <body>
+    <h1>Flashing Rectangle and EEG Recording</h1>
 
     <div class="container">
         <div id="rectangle"></div>
-    </div>
 
-    <div class="container2">
-
-        <div class="container_right">
-
-            <div>
-                <label for="duration">Duration(s): </label>
-                <input type="number" id="duration" min="1" step="1" value="2">
+        <div class="container2">
+            <div class="container_right">
+                <div>
+                    <label for="duration">Duration (s):</label>
+                    <input type="number" id="duration" min="1" step="1" value="2">
+                </div>
+                <div>
+                    <label for="frequency">Frequency (Hz):</label>
+                    <input type="number" id="frequency" min="0.1" step="0.1" value="6">
+                </div>
+                <div>
+                    <button id="startButton">Start</button>
+                </div>
             </div>
 
             <div>
-                <label for="frequency">Frequency (Hz): </label>
-                <input type="number" id="frequency" min="0.1" step="0.1" value="6">
+                <svg width="400" height="200" id="waveformSVG" class="svgs"></svg>
+                <svg width="400" height="200" id="spectrumSVG" class="svgs"></svg>
             </div>
-            <div>
-                <button id="startButton">Start</button>
-            </div>
-
-        </div>
-
-        <div>
-            <svg width="400" height="200" id="waveformSVG" class="svgs"></svg>
-            <svg width="400" height="200" id="spectrumSVG" class="svgs"></svg>
         </div>
     </div>
 
@@ -174,7 +187,6 @@
                     for (let i = 0; i < numSamples; i++) {
                         t[i] = i / sampleRate;
                     }
-                    console.log(d3.max(t))
 
                     const duration = parseFloat(durationInput.value);
                     const data_ = data.subarray(0, 48000 * duration);
@@ -253,30 +265,32 @@
                 .attr('d', lineGenerator)
                 .attr('fill', 'none')
                 .attr('stroke', 'blue')
-                .attr('stroke-width', 1);
+                .attr('stroke-width', 2); // 增加线条宽度
 
             // Add a title
             g.append('text')
                 .text(title)
-                .attr('font-size', '1.2em')
+                .attr('font-size', '1.5em')
                 .attr('transform', `translate(${innerWidth / 2}, -10)`)
-                .attr('text-anchor', 'middle');
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#333');
 
             // Add X-axis label
             g.append('text')
                 .attr('class', 'x axis-label')
                 .attr('text-anchor', 'middle')
                 .attr('transform', `translate(${innerWidth / 2}, ${innerHeight + 35})`) // 调整标签位置
-                .text(xAxisLabel);
+                .text(xAxisLabel)
+                .attr('fill', '#333');
 
             // Add Y-axis label
             g.append('text')
                 .attr('class', 'y axis-label')
                 .attr('text-anchor', 'middle')
                 .attr('transform', `translate(-45, ${innerHeight / 2}) rotate(-90)`) // 调整标签位置和旋转
-                .text(yAxisLabel);
+                .text(yAxisLabel)
+                .attr('fill', '#333');
         }
-
 
         // New function to start recording and flashing simultaneously
         async function startRecordingAndFlashing(duration, frequency) {
