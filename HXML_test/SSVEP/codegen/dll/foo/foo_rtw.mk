@@ -2,7 +2,7 @@
 ## Makefile generated for component 'foo'. 
 ## 
 ## Makefile     : foo_rtw.mk
-## Generated on : Sat Aug 03 13:17:09 2024
+## Generated on : Sun Aug 04 01:02:11 2024
 ## Final product: ./foo.js
 ## Product type : dynamic-library
 ## 
@@ -160,7 +160,7 @@ DEFINES = $(DEFINES_) $(DEFINES_CUSTOM) $(DEFINES_STANDARD)
 ## SOURCE FILES
 ###########################################################################
 
-SRCS = $(START_DIR)/codegen/dll/foo/rt_nonfinite.cpp $(START_DIR)/codegen/dll/foo/rtGetNaN.cpp $(START_DIR)/codegen/dll/foo/rtGetInf.cpp $(START_DIR)/codegen/dll/foo/foo_initialize.cpp $(START_DIR)/codegen/dll/foo/foo_terminate.cpp $(START_DIR)/codegen/dll/foo/foo.cpp
+SRCS = $(START_DIR)/codegen/dll/foo/rt_nonfinite.cpp $(START_DIR)/codegen/dll/foo/rtGetNaN.cpp $(START_DIR)/codegen/dll/foo/rtGetInf.cpp $(START_DIR)/codegen/dll/foo/foo_initialize.cpp $(START_DIR)/codegen/dll/foo/foo_terminate.cpp $(START_DIR)/codegen/dll/foo/foo.cpp $(START_DIR)/codegen/dll/foo/computeDFT.cpp $(START_DIR)/codegen/dll/foo/fft.cpp $(START_DIR)/codegen/dll/foo/ifft.cpp $(START_DIR)/codegen/dll/foo/FFTImplementationCallback.cpp
 
 ALL_SRCS = $(SRCS)
 
@@ -168,7 +168,7 @@ ALL_SRCS = $(SRCS)
 ## OBJECTS
 ###########################################################################
 
-OBJS = rt_nonfinite.o rtGetNaN.o rtGetInf.o foo_initialize.o foo_terminate.o foo.o
+OBJS = rt_nonfinite.o rtGetNaN.o rtGetInf.o foo_initialize.o foo_terminate.o foo.o computeDFT.o fft.o ifft.o FFTImplementationCallback.o
 
 ALL_OBJS = $(OBJS)
 
@@ -344,6 +344,22 @@ foo_terminate.o : $(START_DIR)/codegen/dll/foo/foo_terminate.cpp
 
 
 foo.o : $(START_DIR)/codegen/dll/foo/foo.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+computeDFT.o : $(START_DIR)/codegen/dll/foo/computeDFT.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+fft.o : $(START_DIR)/codegen/dll/foo/fft.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+ifft.o : $(START_DIR)/codegen/dll/foo/ifft.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+FFTImplementationCallback.o : $(START_DIR)/codegen/dll/foo/FFTImplementationCallback.cpp
 	$(CPP) $(CPPFLAGS) -o "$@" "$<"
 
 

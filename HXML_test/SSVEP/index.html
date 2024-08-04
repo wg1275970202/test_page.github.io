@@ -28,13 +28,10 @@
             border: 1px solid #ccc;
         }
     </style>
-    <!-- <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script> -->
     <script src="https://cdn.bootcdn.net/ajax/libs/d3/5.9.7/d3.js"></script>
 </head>
 
 <body>
-
-
     <div>
         <label for="duration">Duration (seconds): </label>
         <input type="number" id="duration" min="1" step="1" value="2">
@@ -44,36 +41,32 @@
         <input type="number" id="frequency" min="0.1" step="0.1" value="2">
     </div>
     <button id="startButton">Start</button>
-    <!-- <button id="stopButton">Stop</button> -->
     <div id="rectangle"></div>
 
     <svg width="800" height="200" id="waveformSVG" class="svgs"></svg>
     <svg width="800" height="200" id="spectrumSVG" class="svgs"></svg>
 
-
-
-
-    <script async type="text/javascript" src="foo.js"></script> <!-- 异步加载 foo.js 脚本 -->
+    <script async type="text/javascript" src="foo.js"></script>
     <script async type="text/javascript" src="getSolutionImage.js"></script>
 
-
     <script>
+        // DOM elements
+        const rectangle = document.getElementById('rectangle');
+        const durationInput = document.getElementById('duration');
+        const frequencyInput = document.getElementById('frequency');
+        const startButton = document.getElementById('startButton');
+        const waveformSVG = d3.select("#waveformSVG");
+        const spectrumSVG = d3.select("#spectrumSVG");
 
-        let rectangle = document.getElementById('rectangle');
-        let durationInput = document.getElementById('duration');
-        let frequencyInput = document.getElementById('frequency');
-        let startButton = document.getElementById('startButton');
-        // let stopButton = document.getElementById('stopButton');
-        let waveformSVG = d3.select("#waveformSVG");
-        let spectrumSVG = d3.select("#spectrumSVG");
+        // Audio variables
         let audioContext, mediaRecorder, audioChunks = [];
 
-
+        // Function to flash the rectangle
         function flashRectangle(duration, frequency) {
-            let startTime = Date.now();
+            const startTime = Date.now();
             function flash() {
-                let elapsedTime = (Date.now() - startTime) / 1000;
-                let intensity = (Math.cos(2 * Math.PI * frequency * elapsedTime) + 1) / 2 * 255;
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                const intensity = (Math.cos(2 * Math.PI * frequency * elapsedTime) + 1) / 2 * 255;
                 rectangle.style.backgroundColor = `rgb(${intensity}, ${intensity}, ${intensity})`;
                 if (elapsedTime < duration) {
                     requestAnimationFrame(flash);
@@ -84,6 +77,7 @@
             flash();
         }
 
+        // Function to record audio
         function recordAudio() {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
@@ -96,148 +90,96 @@
             });
         }
 
+        // Function to analyze recorded audio
         function analyzeAudio() {
-            let audioBlob = new Blob(audioChunks);
-            let reader = new FileReader();
+            const audioBlob = new Blob(audioChunks);
+            const reader = new FileReader();
             reader.readAsArrayBuffer(audioBlob);
             reader.onloadend = () => {
                 audioContext.decodeAudioData(reader.result, buffer => {
-                    let data = buffer.getChannelData(0);
-                    plotWaveform(data, buffer.sampleRate);
-                    plotSpectrum(data, buffer.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    const sampleRate = buffer.sampleRate;
+                    const numSamples = data.length;
+
+                    // Construct time axis
+                    const t = new Float32Array(numSamples);
+                    for (let i = 0; i < numSamples; i++) {
+                        t[i] = i / sampleRate;
+                    }
+
+                    console.log(d3.max(t))
+
+                    const duration = parseFloat(durationInput.value);
+                    const data_ = data.subarray(0, 48000 * duration);
+
+                    const data_out_all = getSolImage(data_, duration);
+
+                    const n = 201;
+                    const data_out = data_out_all.slice(0, n * 2);
+                    const frequency = data_out.slice(0, n);
+                    const magnitude = data_out.slice(n, n * 2);
+
+                    const x = Array.from(t);
+                    const y = Array.from(data);
+
+                    const customTickFormat_1 = d => `${(d*1000).toFixed(0)} ms`;
+                    plot_(x, y, waveformSVG, customTickFormat_1);
+    
+                    const customTickFormat_2 = d => `${(d).toFixed(0)} Hz`;
+                    plot_(frequency, magnitude, spectrumSVG, customTickFormat_2);
                 });
             };
         }
 
-        function getMinMax(data) {
-            let min = Infinity;
-            let max = -Infinity;
-
-            for (let i = 0; i < data.length; i++) {
-                if (data[i] < min) min = data[i];
-                if (data[i] > max) max = data[i];
-            }
-
-            return { min, max };
-        }
-
-        function plotWaveform(data, sampleRate) {
-
-            const width = +waveformSVG.attr('width');
-            const height = +waveformSVG.attr('height');
+        // Function to plot data using D3
+        function plot_(x, y, plot_SVG, tickFormatFunction) {
+            const width = +plot_SVG.attr('width');
+            const height = +plot_SVG.attr('height');
             const margin = { top: 20, right: 20, bottom: 30, left: 50 };
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = height - margin.top - margin.bottom;
 
-
-
-            let { min, max } = getMinMax(data);
-
+            // Create scales
             const xScale = d3.scaleLinear()
-                .domain([0, data.length / sampleRate * 1000]) // Time in milliseconds
+                .domain([d3.min(x), d3.max(x)])
                 .range([0, innerWidth]);
 
             const yScale = d3.scaleLinear()
-                .domain([min, max])
+                .domain([d3.min(y), d3.max(y)])
                 .range([innerHeight, 0]);
 
-            waveformSVG.selectAll('*').remove(); // Clear previous contents
+            // Clear previous contents
+            plot_SVG.selectAll('*').remove();
 
-            const g = waveformSVG.append('g')
+            // Create a group element for the plot
+            const g = plot_SVG.append('g')
                 .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
+            // Create and append X-axis
             const xAxis = d3.axisBottom(xScale)
-                .tickFormat(d => `${Math.round(d)} ms`);
-            g.append('g')
-                .call(xAxis)
-                .attr('transform', `translate(0, ${innerHeight})`);
-
-            const yAxis = d3.axisLeft(yScale);
-            g.append('g')
-                .call(yAxis);
-
-            const lineGenerator = d3.line()
-                .x((d, i) => xScale(i / sampleRate * 1000)) // Convert sample index to time in milliseconds
-                .y(d => yScale(d));
-
-            g.append('path')
-                .datum(data)
-                .attr('d', lineGenerator)
-                .attr('fill', 'none')
-                .attr('stroke', 'blue')
-                .attr('stroke-width', 1);
-
-            g.append('text')
-                .text('Waveform')
-                .attr('font-size', '1em')
-                .attr('transform', `translate(${innerWidth / 2}, ${innerHeight + 40})`)
-                .attr('text-anchor', 'middle');
-
-
-        }
-
-        function plotSpectrum(data, sampleRate) {
-            let duration = parseFloat(durationInput.value);
-            let fftSize = Math.pow(2, Math.ceil(Math.log2(data.length)));
-
-            let data_ = data.subarray(0, 48000 * duration);
-
-
-            let interval = 48;
-            let length = Math.ceil(data_.length / interval);
-            let sampledData = new Float32Array(length);
-            for (let i = 0; i < length; i++) {
-                sampledData[i] = data_[i * interval];
-            }
-
-
-            let data_out_all = getSolImage(sampledData, duration);
-
-            let n = 100;
-
-            let data_out = data_out_all.slice(0, n * 2);
-
-            let frequency = data_out.slice(0, n); // 频率
-            let magnitude = data_out.slice(n, n * 2); // PSD
-            //////////////////////////////////////////////////////////////////////////////////////////
-
-            // 自适应刻度
-            const width = +spectrumSVG.attr('width');
-            const height = +spectrumSVG.attr('height');
-            const margin = { top: 20, right: 20, bottom: 30, left: 50 };
-            const innerWidth = width - margin.left - margin.right;
-            const innerHeight = height - margin.top - margin.bottom;
-
-            const xScale = d3.scaleLinear()
-                .domain([Math.min(...frequency), Math.max(...frequency)]) // 从 0 到最大频率
-                .range([0, innerWidth]);
-
-            const yScale = d3.scaleLinear()
-                .domain([0, Math.max(...magnitude)]) // 从 0 到最大 PSD
-                .range([innerHeight, 0]);
-
-            spectrumSVG.selectAll('*').remove(); // 清除旧内容
-
-            const g = spectrumSVG.append('g')
-                .attr('transform', `translate(${margin.left}, ${margin.top})`);
-
-            const xAxis = d3.axisBottom(xScale)
-                .tickFormat(d => `${Math.round(d)} Hz`);
+                .tickFormat(tickFormatFunction);
 
             g.append('g')
                 .call(xAxis)
                 .attr('transform', `translate(0, ${innerHeight})`);
 
+            // Create and append Y-axis
             const yAxis = d3.axisLeft(yScale);
             g.append('g')
                 .call(yAxis);
 
+            // Define the line generator
             const lineGenerator = d3.line()
-                .x(d => xScale(d.x))
-                .y(d => yScale(d.y));
+                .x(d => xScale(d[0]))
+                .y(d => yScale(d[1]));
 
-            const lineData = frequency.map((freq, i) => ({ x: freq, y: magnitude[i] }));
+            // Prepare data for line generator
+            const lineData = x.map((d, i) => [d, y[i]]);
 
+            // Ensure data is valid
+            if (lineData.length === 0) return;
+
+            // Append the path element
             g.append('path')
                 .datum(lineData)
                 .attr('d', lineGenerator)
@@ -245,29 +187,25 @@
                 .attr('stroke', 'blue')
                 .attr('stroke-width', 1);
 
+            // Add a label
             g.append('text')
-                .text('Spectrum')
+                .text('Plot')
                 .attr('font-size', '1em')
                 .attr('transform', `translate(${innerWidth / 2}, ${innerHeight + 40})`)
                 .attr('text-anchor', 'middle');
         }
 
-
+        // Event listener for start button
         startButton.addEventListener('click', () => {
             audioChunks = [];
-            let duration = parseFloat(durationInput.value);
-            let frequency = parseFloat(frequencyInput.value);
+            const duration = parseFloat(durationInput.value);
+            const frequency = parseFloat(frequencyInput.value);
             recordAudio();
             flashRectangle(duration, frequency);
             setTimeout(() => {
                 mediaRecorder.stop();
-            }, (duration + 0.1) * 1000);
+            }, (duration + 0.15) * 1000);
         });
-
-        // stopButton.addEventListener('click', () => {
-        //     mediaRecorder.stop();
-        // });
     </script>
 </body>
-
 </html>

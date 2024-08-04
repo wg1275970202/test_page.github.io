@@ -2,7 +2,7 @@
 // File: _coder_foo_api.cpp
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 03-Aug-2024 13:56:33
+// C/C++ source code generated on  : 04-Aug-2024 01:01:56
 //
 
 // Include Files
@@ -45,7 +45,7 @@ static real32_T (*emlrt_marshallIn(const emlrtStack &sp,
 static real32_T (*emlrt_marshallIn(const emlrtStack &sp, const mxArray *u,
                                    const emlrtMsgIdentifier *parentId))[30000];
 
-static const mxArray *emlrt_marshallOut(const real32_T u[200]);
+static const mxArray *emlrt_marshallOut(const real32_T u[402]);
 
 // Function Definitions
 //
@@ -157,13 +157,13 @@ static real32_T (*emlrt_marshallIn(const emlrtStack &sp, const mxArray *u,
 }
 
 //
-// Arguments    : const real32_T u[200]
+// Arguments    : const real32_T u[402]
 // Return Type  : const mxArray *
 //
-static const mxArray *emlrt_marshallOut(const real32_T u[200])
+static const mxArray *emlrt_marshallOut(const real32_T u[402])
 {
   static const int32_T iv[2]{0, 0};
-  static const int32_T iv1[2]{1, 200};
+  static const int32_T iv1[2]{1, 402};
   const mxArray *m;
   const mxArray *y;
   y = nullptr;
@@ -187,10 +187,10 @@ void foo_api(const mxArray *const prhs[2], const mxArray **plhs)
       nullptr  // prev
   };
   real32_T(*input)[30000];
-  real32_T(*B)[200];
+  real32_T(*B)[402];
   real32_T duration;
   st.tls = emlrtRootTLSGlobal;
-  B = (real32_T(*)[200])mxMalloc(sizeof(real32_T[200]));
+  B = (real32_T(*)[402])mxMalloc(sizeof(real32_T[402]));
   // Marshall function inputs
   input = emlrt_marshallIn(st, emlrtAlias(prhs[0]), "input");
   duration = b_emlrt_marshallIn(st, emlrtAliasP(prhs[1]), "duration");

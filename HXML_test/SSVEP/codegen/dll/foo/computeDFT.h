@@ -1,25 +1,28 @@
 //
-// File: foo_initialize.h
+// File: computeDFT.h
 //
 // MATLAB Coder version            : 23.2
 // C/C++ source code generated on  : 04-Aug-2024 01:01:56
 //
 
-#ifndef FOO_INITIALIZE_H
-#define FOO_INITIALIZE_H
+#ifndef COMPUTEDFT_H
+#define COMPUTEDFT_H
 
 // Include Files
-#include "foo_spec.h"
 #include "rtwtypes.h"
+#include "coder_array.h"
 #include <cstddef>
 #include <cstdlib>
 
 // Function Declarations
-FOO_DLL_EXPORT extern "C" void foo_initialize();
+namespace coder {
+void computeDFTviaCZT(const array<float, 1U> &xin, creal32_T Xx[201]);
+
+}
 
 #endif
 //
-// File trailer for foo_initialize.h
+// File trailer for computeDFT.h
 //
 // [EOF]
 //

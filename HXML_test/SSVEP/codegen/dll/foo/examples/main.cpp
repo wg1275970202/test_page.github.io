@@ -2,7 +2,7 @@
 // File: main.cpp
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 03-Aug-2024 13:56:33
+// C/C++ source code generated on  : 04-Aug-2024 01:01:56
 //
 
 /*************************************************************************/
@@ -90,7 +90,7 @@ int main(int, char **)
 void main_foo()
 {
   float fv[30000];
-  float B[200];
+  float B[402];
   // Initialize function 'foo' input arguments.
   // Initialize function input argument 'input'.
   // Call the entry-point 'foo'.

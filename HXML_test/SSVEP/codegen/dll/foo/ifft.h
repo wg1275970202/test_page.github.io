@@ -1,25 +1,28 @@
 //
-// File: foo_initialize.h
+// File: ifft.h
 //
 // MATLAB Coder version            : 23.2
 // C/C++ source code generated on  : 04-Aug-2024 01:01:56
 //
 
-#ifndef FOO_INITIALIZE_H
-#define FOO_INITIALIZE_H
+#ifndef IFFT_H
+#define IFFT_H
 
 // Include Files
-#include "foo_spec.h"
 #include "rtwtypes.h"
+#include "coder_array.h"
 #include <cstddef>
 #include <cstdlib>
 
 // Function Declarations
-FOO_DLL_EXPORT extern "C" void foo_initialize();
+namespace coder {
+void ifft(const array<creal32_T, 1U> &x, array<creal32_T, 1U> &y);
+
+}
 
 #endif
 //
-// File trailer for foo_initialize.h
+// File trailer for ifft.h
 //
 // [EOF]
 //

@@ -984,6 +984,8 @@ function dbg(...args) {
       abort('native code called abort()');
     };
 
+  var __emscripten_memcpy_js = (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num);
+
   var getHeapMax = () =>
       // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
       // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
@@ -1364,6 +1366,8 @@ function checkIncomingModuleAPI() {
 var wasmImports = {
   /** @export */
   _abort_js: __abort_js,
+  /** @export */
+  _emscripten_memcpy_js: __emscripten_memcpy_js,
   /** @export */
   emscripten_resize_heap: _emscripten_resize_heap,
   /** @export */
