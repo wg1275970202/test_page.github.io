@@ -62,10 +62,9 @@
         let audioContext, mediaRecorder, audioChunks = [];
 
         // Function to flash the rectangle
-        function flashRectangle(duration, frequency) {
-            const startTime = Date.now();
-            function flash() {
-                const elapsedTime = (Date.now() - startTime) / 1000;
+        function flashRectangle(duration, frequency, startTime) {
+            function flash() {//
+                const elapsedTime = audioContext.currentTime - startTime;
                 const intensity = (Math.cos(2 * Math.PI * frequency * elapsedTime) + 1) / 2 * 255;
                 rectangle.style.backgroundColor = `rgb(${intensity}, ${intensity}, ${intensity})`;
                 if (elapsedTime < duration) {
@@ -75,19 +74,6 @@
                 }
             }
             flash();
-        }
-
-        // Function to record audio
-        function recordAudio() {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
-                mediaRecorder.onstop = analyzeAudio;
-                mediaRecorder.start();
-            });
         }
 
         // Function to analyze recorded audio
@@ -106,7 +92,6 @@
                     for (let i = 0; i < numSamples; i++) {
                         t[i] = i / sampleRate;
                     }
-
                     console.log(d3.max(t))
 
                     const duration = parseFloat(durationInput.value);
@@ -127,7 +112,6 @@
 
                     const customTickFormat_2 = d => `${(d).toFixed(0)} Hz`;
                     plot_(frequency, magnitude, spectrumSVG, customTickFormat_2);
-
                 });
             };
         }
@@ -196,16 +180,46 @@
                 .attr('text-anchor', 'middle');
         }
 
+        // New function to start recording and flashing simultaneously
+        async function startRecordingAndFlashing(duration, frequency) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+            mediaRecorder.onstop = analyzeAudio;
+
+            const startTime = audioContext.currentTime;
+            const stopTime = startTime + duration +0.1;
+
+            mediaRecorder.start();
+            flashRectangle(duration, frequency, startTime);
+
+            // Use requestAnimationFrame to check if recording needs to be stopped
+            function check() {
+                if (audioContext.currentTime >= stopTime) {
+                    mediaRecorder.stop();
+                } else {
+                    requestAnimationFrame(check);
+                }
+            }
+            requestAnimationFrame(check);
+        }
+
         // Event listener for start button
-        startButton.addEventListener('click', () => {
+        startButton.addEventListener('click', async () => {
             audioChunks = [];
             const duration = parseFloat(durationInput.value);
             const frequency = parseFloat(frequencyInput.value);
-            recordAudio();
-            flashRectangle(duration, frequency);
-            setTimeout(() => {
-                mediaRecorder.stop();
-            }, (duration + 0.15) * 1000);
+
+            try {
+                await startRecordingAndFlashing(duration, frequency);
+            } catch (error) {
+                console.error('Error starting recording and flashing:', error);
+            }
         });
     </script>
 </body>
