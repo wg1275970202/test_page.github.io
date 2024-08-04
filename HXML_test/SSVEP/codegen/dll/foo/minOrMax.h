@@ -1,28 +1,29 @@
 //
-// File: ifft.h
+// File: minOrMax.h
 //
 // MATLAB Coder version            : 23.2
 // C/C++ source code generated on  : 04-Aug-2024 23:30:26
 //
 
-#ifndef IFFT_H
-#define IFFT_H
+#ifndef MINORMAX_H
+#define MINORMAX_H
 
 // Include Files
 #include "rtwtypes.h"
-#include "coder_array.h"
 #include <cstddef>
 #include <cstdlib>
 
 // Function Declarations
 namespace coder {
-void ifft(const array<creal32_T, 1U> &x, array<creal32_T, 1U> &y);
+namespace internal {
+float maximum(const float x[501]);
 
 }
+} // namespace coder
 
 #endif
 //
-// File trailer for ifft.h
+// File trailer for minOrMax.h
 //
 // [EOF]
 //

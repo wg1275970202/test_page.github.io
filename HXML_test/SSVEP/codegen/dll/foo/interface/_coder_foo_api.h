@@ -2,7 +2,7 @@
 // File: _coder_foo_api.h
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 04-Aug-2024 01:01:56
+// C/C++ source code generated on  : 04-Aug-2024 23:30:26
 //
 
 #ifndef _CODER_FOO_API_H
@@ -21,9 +21,9 @@ extern emlrtCTX emlrtRootTLSGlobal;
 extern emlrtContext emlrtContextGlobal;
 
 // Function Declarations
-void foo(real32_T input[30000], real32_T duration, real32_T B[402]);
+void foo(real32_T input[60000], real32_T B[1002]);
 
-void foo_api(const mxArray *const prhs[2], const mxArray **plhs);
+void foo_api(const mxArray *prhs, const mxArray **plhs);
 
 void foo_atexit();
 

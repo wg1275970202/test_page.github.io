@@ -1381,7 +1381,7 @@ var wasmExports = createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
 var _foo_initialize = Module['_foo_initialize'] = createExportWrapper('foo_initialize', 0);
 var _foo_terminate = Module['_foo_terminate'] = createExportWrapper('foo_terminate', 0);
-var _foo = Module['_foo'] = createExportWrapper('foo', 3);
+var _foo = Module['_foo'] = createExportWrapper('foo', 2);
 var _fflush = createExportWrapper('fflush', 1);
 var _malloc = Module['_malloc'] = createExportWrapper('malloc', 1);
 var _free = Module['_free'] = createExportWrapper('free', 1);

@@ -1,36 +1,40 @@
-function getSolImage(data_, duration) {
+function getSolImage(Input) {
 
+    Inputs_temp=new Float32Array(Input.flat());
 
-    // downsample
-    let interval = 48;
-    let length = Math.ceil(data_.length / interval);
-    let sampledData = new Float32Array(1000 * 30);// 30 seconds
-    for (let i = 0; i < length; i++) {
-        sampledData[i] = data_[i * interval];
-    }
+    let Inputs = new Float32Array(1000 * 60);
+    // 使用 set 方法将 Input1 填入 sampledData 的前几位
+    Inputs.set(Inputs_temp);
 
     // Assuming data is a Float32Array
-    let input_1 = new Float32Array(sampledData);
-    let input_2 = new Float32Array([duration]); // Assuming duration is a scalar, not an array
+    let inputs = new Float32Array(Inputs);
     let outputs = new Float32Array(20000); // Adjust size as needed
 
     // Move data to WASM heap
-    let input_1Ptr = _arrayToHeap(input_1);
-    let input_2Ptr = _arrayToHeap(input_2);
+    let inputsPtr = _arrayToHeap(inputs);
     let outputsPtr = _arrayToHeap(outputs);
+    
 
     // Run the WASM function
-    Module._foo(input_1Ptr.byteOffset, input_2Ptr.byteOffset, outputsPtr.byteOffset);
+    Module._foo(inputsPtr.byteOffset, outputsPtr.byteOffset);
 
     // Copy data from WASM heap
     outputs = _heapToArray(outputsPtr, outputs);
 
     // Free allocated memory
-    _freeArray(input_1Ptr);
-    _freeArray(input_2Ptr);
+    _freeArray(inputsPtr);
     _freeArray(outputsPtr);
 
-    return Array.from(outputs);
+    let data_out_all=Array.from(outputs)
+    ///////////////////////////////////////////////////////////
+    const n = [501, 501];
+    const n_ = math.cumsum([0, ...n]);
+    let Output = [];
+    for (let i = 0; i < n.length; i++) {
+        Output[i] = data_out_all.slice(n_[i], n_[i + 1]);
+    }
+
+    return Output;
 }
 
 // JavaScript Array to Emscripten Heap

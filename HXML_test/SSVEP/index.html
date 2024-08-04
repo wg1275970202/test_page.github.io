@@ -38,16 +38,19 @@
             padding: 20px;
         }
 
-        .container_right, .container_left {
+        .container_right,
+        .container_left {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            gap: 15px; /* 增加间隔 */
+            gap: 15px;
+            /* 增加间隔 */
             margin-bottom: 20px;
         }
 
         .container_right {
-            align-items: flex-end; /* 右对齐 */
+            align-items: flex-end;
+            /* 右对齐 */
         }
 
         /* 控件样式 */
@@ -105,12 +108,15 @@
         }
 
         /* 图表标题和标签样式 */
-        .x.axis-label, .y.axis-label {
+        .x.axis-label,
+        .y.axis-label {
             font-size: 12px;
             fill: #333;
         }
     </style>
     <script src="https://cdn.bootcdn.net/ajax/libs/d3/5.9.7/d3.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.0.0/math.min.js"></script>
+
 </head>
 
 <body>
@@ -191,12 +197,26 @@
                     const duration = parseFloat(durationInput.value);
                     const data_ = data.subarray(0, 48000 * duration);
 
-                    const data_out_all = getSolImage(data_, duration);
+                    // downsample
+                    let interval = 48;
+                    let length = Math.ceil(data_.length / interval);
+                    let sampledData = new Float32Array(1000 * 30);// 30 seconds
+                    for (let i = 0; i < length; i++) {
+                        sampledData[i] = data_[i * interval];
+                    }
 
-                    const n = 201;
-                    const data_out = data_out_all.slice(0, n * 2);
-                    const frequency = data_out.slice(0, n);
-                    const magnitude = data_out.slice(n, n * 2);
+
+                    // Input list
+                    let Input = [];//Array
+                    Input[0] = Array.from(sampledData);//30e3
+                    Input[1] = duration;//1
+                    // function
+                    const Output = getSolImage(Input);
+                    // Output list
+                    const frequency = Output[0];
+                    const magnitude = Output[1];
+
+
 
                     const x = Array.from(t);
                     const y = Array.from(data);

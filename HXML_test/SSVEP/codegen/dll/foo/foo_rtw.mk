@@ -2,7 +2,7 @@
 ## Makefile generated for component 'foo'. 
 ## 
 ## Makefile     : foo_rtw.mk
-## Generated on : Sun Aug 04 01:02:11 2024
+## Generated on : Sun Aug 04 23:30:42 2024
 ## Final product: ./foo.js
 ## Product type : dynamic-library
 ## 
@@ -160,7 +160,7 @@ DEFINES = $(DEFINES_) $(DEFINES_CUSTOM) $(DEFINES_STANDARD)
 ## SOURCE FILES
 ###########################################################################
 
-SRCS = $(START_DIR)/codegen/dll/foo/rt_nonfinite.cpp $(START_DIR)/codegen/dll/foo/rtGetNaN.cpp $(START_DIR)/codegen/dll/foo/rtGetInf.cpp $(START_DIR)/codegen/dll/foo/foo_initialize.cpp $(START_DIR)/codegen/dll/foo/foo_terminate.cpp $(START_DIR)/codegen/dll/foo/foo.cpp $(START_DIR)/codegen/dll/foo/computeDFT.cpp $(START_DIR)/codegen/dll/foo/fft.cpp $(START_DIR)/codegen/dll/foo/ifft.cpp $(START_DIR)/codegen/dll/foo/FFTImplementationCallback.cpp
+SRCS = $(START_DIR)/codegen/dll/foo/rt_nonfinite.cpp $(START_DIR)/codegen/dll/foo/rtGetNaN.cpp $(START_DIR)/codegen/dll/foo/rtGetInf.cpp $(START_DIR)/codegen/dll/foo/foo_initialize.cpp $(START_DIR)/codegen/dll/foo/foo_terminate.cpp $(START_DIR)/codegen/dll/foo/foo.cpp $(START_DIR)/codegen/dll/foo/minOrMax.cpp $(START_DIR)/codegen/dll/foo/czt.cpp $(START_DIR)/codegen/dll/foo/fft.cpp $(START_DIR)/codegen/dll/foo/ifft.cpp $(START_DIR)/codegen/dll/foo/FFTImplementationCallback.cpp
 
 ALL_SRCS = $(SRCS)
 
@@ -168,7 +168,7 @@ ALL_SRCS = $(SRCS)
 ## OBJECTS
 ###########################################################################
 
-OBJS = rt_nonfinite.o rtGetNaN.o rtGetInf.o foo_initialize.o foo_terminate.o foo.o computeDFT.o fft.o ifft.o FFTImplementationCallback.o
+OBJS = rt_nonfinite.o rtGetNaN.o rtGetInf.o foo_initialize.o foo_terminate.o foo.o minOrMax.o czt.o fft.o ifft.o FFTImplementationCallback.o
 
 ALL_OBJS = $(OBJS)
 
@@ -347,7 +347,11 @@ foo.o : $(START_DIR)/codegen/dll/foo/foo.cpp
 	$(CPP) $(CPPFLAGS) -o "$@" "$<"
 
 
-computeDFT.o : $(START_DIR)/codegen/dll/foo/computeDFT.cpp
+minOrMax.o : $(START_DIR)/codegen/dll/foo/minOrMax.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+czt.o : $(START_DIR)/codegen/dll/foo/czt.cpp
 	$(CPP) $(CPPFLAGS) -o "$@" "$<"
 
 
