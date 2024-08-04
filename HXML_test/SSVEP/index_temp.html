@@ -122,11 +122,12 @@
                     const x = Array.from(t);
                     const y = Array.from(data);
 
-                    const customTickFormat_1 = d => `${(d*1000).toFixed(0)} ms`;
+                    const customTickFormat_1 = d => `${(d * 1000).toFixed(0)} ms`;
                     plot_(x, y, waveformSVG, customTickFormat_1);
-    
+
                     const customTickFormat_2 = d => `${(d).toFixed(0)} Hz`;
                     plot_(frequency, magnitude, spectrumSVG, customTickFormat_2);
+
                 });
             };
         }
@@ -208,4 +209,5 @@
         });
     </script>
 </body>
+
 </html>
