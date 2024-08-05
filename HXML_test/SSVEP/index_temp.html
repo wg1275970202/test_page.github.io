@@ -38,23 +38,17 @@
             padding: 20px;
         }
 
-        .container_right,
-        .container_left {
+        /* 右侧容器样式 */
+        .container_right {
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
+            align-items: flex-end;
             gap: 15px;
-            /* 增加间隔 */
             margin-bottom: 20px;
         }
 
-        .container_right {
-            align-items: flex-end;
-            /* 右对齐 */
-        }
-
         /* 控件样式 */
-        input[type="number"] {
+        input[type="number"], input[type="checkbox"] {
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
@@ -108,15 +102,15 @@
         }
 
         /* 图表标题和标签样式 */
-        .x.axis-label,
-        .y.axis-label {
+        .x.axis-label, .y.axis-label {
             font-size: 12px;
             fill: #333;
         }
     </style>
     <script src="https://cdn.bootcdn.net/ajax/libs/d3/5.9.7/d3.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.0.0/math.min.js"></script>
-
+    <script async type="text/javascript" src="foo.js"></script>
+    <script async type="text/javascript" src="getSolutionImage.js"></script>
 </head>
 
 <body>
@@ -127,14 +121,37 @@
 
         <div class="container2">
             <div class="container_right">
+                <!-- Duration Input -->
                 <div>
                     <label for="duration">Duration (s):</label>
                     <input type="number" id="duration" min="1" step="1" value="2">
                 </div>
+
+                <!-- Frequency Input -->
                 <div>
                     <label for="frequency">Frequency (Hz):</label>
                     <input type="number" id="frequency" min="0" step="0.5" value="6">
                 </div>
+
+                <!-- Multiple Frequencies Toggle -->
+                <div>
+                    <label for="modeSwitch">Multiple Frequencies:</label>
+                    <input type="checkbox" id="modeSwitch">
+                </div>
+
+                <!-- Initial Frequency Input -->
+                <div>
+                    <label for="F1">Initial Frequency (Hz):</label>
+                    <input type="number" id="F1" value="12">
+                </div>
+
+                <!-- Frequency Increment Input -->
+                <div>
+                    <label for="df">Frequency Increment (Hz):</label>
+                    <input type="number" id="df" step="0.1" value="0.1">
+                </div>
+
+                <!-- Start Button -->
                 <div>
                     <button id="startButton">Start</button>
                 </div>
@@ -147,27 +164,60 @@
         </div>
     </div>
 
-    <script async type="text/javascript" src="foo.js"></script>
-    <script async type="text/javascript" src="getSolutionImage.js"></script>
-
     <script>
         // DOM elements
         const rectangle = document.getElementById('rectangle');
         const durationInput = document.getElementById('duration');
         const frequencyInput = document.getElementById('frequency');
+        const modeSwitch = document.getElementById('modeSwitch');
+        const F1Input = document.getElementById('F1');
+        const dfInput = document.getElementById('df');
         const startButton = document.getElementById('startButton');
         const waveformSVG = d3.select("#waveformSVG");
         const spectrumSVG = d3.select("#spectrumSVG");
 
         // Audio variables
         let audioContext, mediaRecorder, audioChunks = [];
+        let multipleFrequencies = [];
+
+        // 定义布尔数组 a
+        const Image_logic = [
+            false, false, false, false, false, false, false, false, false, false,
+            false, false, false, false, false, false, false, false, false, false,
+            false, true, true, true, true, true, true, true, false, false,
+            false, false, false, false, false, false, false, false, true, false,
+            false, false, false, false, false, false, false, false, true, false,
+            false, false, false, false, false, false, false, true, false, false,
+            false, false, false, false, false, false, true, false, false, false,
+            false, false, false, false, false, false, true, false, false, false,
+            false, false, false, false, false, true, false, false, false, false,
+            false, false, false, false, false, true, false, false, false, false
+        ];
+
+        // 更新频率列表的函数
+        function updateFrequencies() {
+            const F1 = parseFloat(F1Input.value);
+            const df = parseFloat(dfInput.value);
+            const F_list = Array.from({ length: 100 }, (_, i) => F1 + i * df);
+            multipleFrequencies = F_list.filter((_, i) => Image_logic[i]);
+
+            console.log(multipleFrequencies); // 输出选定的频率值
+        }
 
         // Function to flash the rectangle
         function flashRectangle(duration, frequency, startTime) {
             function flash() {
                 const elapsedTime = audioContext.currentTime - startTime;
-                const intensity = (Math.cos(2 * Math.PI * frequency * elapsedTime) + 1) / 2 * 255;
+                let intensity;
+
+                if (modeSwitch.checked) {
+                    intensity = (multipleFrequencies.reduce((sum, freq) => sum + Math.cos(2 * Math.PI * freq * elapsedTime), 0) / multipleFrequencies.length + 1) / 2 * 255;
+                } else {
+                    intensity = (Math.cos(2 * Math.PI * frequency * elapsedTime) + 1) / 2 * 255;
+                }
+
                 rectangle.style.backgroundColor = `rgb(${intensity}, ${intensity}, ${intensity})`;
+
                 if (elapsedTime < duration) {
                     requestAnimationFrame(flash);
                 } else {
@@ -198,35 +248,28 @@
                     const data_ = data.subarray(0, 48000 * duration);
 
                     // downsample
-                    let interval = 48;
-                    let length = Math.ceil(data_.length / interval);
-                    let sampledData = new Float32Array(1000 * 30);// 30 seconds
+                    const interval = 48;
+                    const length = Math.ceil(data_.length / interval);
+                    const sampledData = new Float32Array(1000 * 30); // 30 seconds
                     for (let i = 0; i < length; i++) {
                         sampledData[i] = data_[i * interval];
                     }
 
-
                     // Input list
-                    let Input = [];//Array
-                    Input[0] = Array.from(sampledData);//30e3
-                    Input[1] = duration;//1
-                    // function
+                    const Input = [Array.from(sampledData), duration];
                     const Output = getSolImage(Input);
-                    // Output list
                     const frequency = Output[0];
                     const magnitude = Output[1];
 
-
-
+                    // Plot data
                     const x = Array.from(t);
                     const y = Array.from(data);
 
-                    const customTickFormat_1 = d => `${(d).toFixed(1)} s`;
+                    const customTickFormat_1 = d => `${d.toFixed(1)} s`;
                     plot_(x, y, waveformSVG, customTickFormat_1, 'Waveform', 'Time (s)', 'Amplitude');
 
-                    const customTickFormat_2 = d => `${(d).toFixed(0)} Hz`;
+                    const customTickFormat_2 = d => `${d.toFixed(0)} Hz`;
                     plot_(frequency, magnitude, spectrumSVG, customTickFormat_2, 'Spectrum', 'Frequency (Hz)', 'Magnitude');
-
                 });
             };
         }
@@ -235,7 +278,7 @@
         function plot_(x, y, plot_SVG, tickFormatFunction, title, xAxisLabel, yAxisLabel) {
             const width = +plot_SVG.attr('width');
             const height = +plot_SVG.attr('height');
-            const margin = { top: 40, right: 20, bottom: 50, left: 70 }; // 增加底部和左侧的边距
+            const margin = { top: 40, right: 20, bottom: 50, left: 70 };
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = height - margin.top - margin.bottom;
 
@@ -256,9 +299,7 @@
                 .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
             // Create and append X-axis
-            const xAxis = d3.axisBottom(xScale)
-                .tickFormat(tickFormatFunction);
-
+            const xAxis = d3.axisBottom(xScale).tickFormat(tickFormatFunction);
             g.append('g')
                 .call(xAxis)
                 .attr('transform', `translate(0, ${innerHeight})`);
@@ -275,8 +316,6 @@
 
             // Prepare data for line generator
             const lineData = x.map((d, i) => [d, y[i]]);
-
-            // Ensure data is valid
             if (lineData.length === 0) return;
 
             // Append the path element
@@ -285,7 +324,7 @@
                 .attr('d', lineGenerator)
                 .attr('fill', 'none')
                 .attr('stroke', 'blue')
-                .attr('stroke-width', 2); // 增加线条宽度
+                .attr('stroke-width', 2);
 
             // Add a title
             g.append('text')
@@ -299,7 +338,7 @@
             g.append('text')
                 .attr('class', 'x axis-label')
                 .attr('text-anchor', 'middle')
-                .attr('transform', `translate(${innerWidth / 2}, ${innerHeight + 35})`) // 调整标签位置
+                .attr('transform', `translate(${innerWidth / 2}, ${innerHeight + 35})`)
                 .text(xAxisLabel)
                 .attr('fill', '#333');
 
@@ -307,21 +346,19 @@
             g.append('text')
                 .attr('class', 'y axis-label')
                 .attr('text-anchor', 'middle')
-                .attr('transform', `translate(-45, ${innerHeight / 2}) rotate(-90)`) // 调整标签位置和旋转
+                .attr('transform', `translate(-45, ${innerHeight / 2}) rotate(-90)`)
                 .text(yAxisLabel)
                 .attr('fill', '#333');
         }
 
-        // New function to start recording and flashing simultaneously
+        // Function to start recording and flashing simultaneously
         async function startRecordingAndFlashing(duration, frequency) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
             mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
+            mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
             mediaRecorder.onstop = analyzeAudio;
 
             const startTime = audioContext.currentTime;
@@ -330,7 +367,6 @@
             mediaRecorder.start();
             flashRectangle(duration, frequency, startTime);
 
-            // Use requestAnimationFrame to check if recording needs to be stopped
             function check() {
                 if (audioContext.currentTime >= stopTime) {
                     mediaRecorder.stop();
@@ -341,9 +377,14 @@
             requestAnimationFrame(check);
         }
 
+        // 更新频率列表
+        F1Input.addEventListener('input', updateFrequencies);
+        dfInput.addEventListener('input', updateFrequencies);
+
         // Event listener for start button
         startButton.addEventListener('click', async () => {
             audioChunks = [];
+            updateFrequencies(); // 确保在点击开始时更新频率列表
             const duration = parseFloat(durationInput.value);
             const frequency = parseFloat(frequencyInput.value);
 
