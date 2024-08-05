@@ -2,7 +2,7 @@
 // File: _coder_foo_info.cpp
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 04-Aug-2024 23:30:26
+// C/C++ source code generated on  : 05-Aug-2024 10:41:23
 //
 
 // Include Files
@@ -64,7 +64,7 @@ mxArray *emlrtMexFcnProperties()
       emlrtMxCreateString(
           "D:\\Github\\wg1275970202.github.io\\HXML_test\\SSVEP\\foo.m"));
   emlrtSetField(xEntryPoints, 0, "TimeStamp",
-                emlrtMxCreateDoubleScalar(739468.979375));
+                emlrtMxCreateDoubleScalar(739469.4440625));
   emlrtSetField(xEntryPoints, 0, "Constructor",
                 emlrtMxCreateLogicalScalar(false));
   emlrtSetField(xEntryPoints, 0, "Visible", emlrtMxCreateLogicalScalar(true));

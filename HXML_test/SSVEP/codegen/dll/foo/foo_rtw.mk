@@ -2,7 +2,7 @@
 ## Makefile generated for component 'foo'. 
 ## 
 ## Makefile     : foo_rtw.mk
-## Generated on : Sun Aug 04 23:30:42 2024
+## Generated on : Mon Aug 05 10:36:46 2024
 ## Final product: ./foo.js
 ## Product type : dynamic-library
 ## 
