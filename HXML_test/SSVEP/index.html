@@ -38,6 +38,15 @@
             padding: 20px;
         }
 
+        /* 容器样式 */
+        .container2 {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+        }
+
         /* 右侧容器样式 */
         .container_right {
             display: flex;
@@ -48,7 +57,8 @@
         }
 
         /* 控件样式 */
-        input[type="number"], input[type="checkbox"] {
+        input[type="number"],
+        input[type="checkbox"] {
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
@@ -102,7 +112,8 @@
         }
 
         /* 图表标题和标签样式 */
-        .x.axis-label, .y.axis-label {
+        .x.axis-label,
+        .y.axis-label {
             font-size: 12px;
             fill: #333;
         }
@@ -142,13 +153,13 @@
 
                 <!-- Initial Frequency Input -->
                 <div>
-                    <label for="F1">Initial Frequency (Hz):</label>
+                    <label for="F1">Initial Freq (Hz):</label>
                     <input type="number" id="F1" value="12">
                 </div>
 
                 <!-- Frequency Increment Input -->
                 <div>
-                    <label for="df">Frequency Increment (Hz):</label>
+                    <label for="df">Freq Increment (Hz):</label>
                     <input type="number" id="df" step="0.1" value="0.1">
                 </div>
 
