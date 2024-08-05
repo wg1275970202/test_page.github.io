@@ -159,7 +159,7 @@
 
                 <!-- Frequency Increment Input -->
                 <div>
-                    <label for="df">Freq Increment (Hz):</label>
+                    <label for="df">Freq-inc (Hz):</label>
                     <input type="number" id="df" step="0.1" value="0.1">
                 </div>
 
@@ -362,6 +362,7 @@
                 .text(yAxisLabel)
                 .attr('fill', '#333');
         }
+
 
         // Function to start recording and flashing simultaneously
         async function startRecordingAndFlashing(duration, frequency) {
