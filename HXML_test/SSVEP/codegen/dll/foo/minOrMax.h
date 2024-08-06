@@ -2,7 +2,7 @@
 // File: minOrMax.h
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 05-Aug-2024 10:41:23
+// C/C++ source code generated on  : 06-Aug-2024 01:31:17
 //
 
 #ifndef MINORMAX_H
@@ -18,7 +18,9 @@ namespace coder {
 namespace internal {
 float maximum(const float x[501]);
 
-}
+float maximum(const float x_data[], int x_size);
+
+} // namespace internal
 } // namespace coder
 
 #endif

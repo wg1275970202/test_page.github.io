@@ -170,8 +170,9 @@
             </div>
 
             <div>
-                <svg width="400" height="200" id="waveformSVG" class="svgs"></svg>
-                <svg width="400" height="200" id="spectrumSVG" class="svgs"></svg>
+                <svg width="500" height="200" id="waveformSVG" class="svgs"></svg>
+                <svg width="500" height="200" id="spectrumSVG" class="svgs"></svg>
+                <svg width="500" height="200" id="EEG_BandSVG" class="svgs"></svg>
             </div>
         </div>
     </div>
@@ -187,6 +188,8 @@
         const startButton = document.getElementById('startButton');
         const waveformSVG = d3.select("#waveformSVG");
         const spectrumSVG = d3.select("#spectrumSVG");
+        const EEG_BandSVG = d3.select("#EEG_BandSVG");
+
 
         // Audio variables
         let audioContext, mediaRecorder, audioChunks = [];
@@ -268,10 +271,21 @@
                     }
 
                     // Input list
-                    const Input = [Array.from(sampledData), duration];
+                    // const Input = [Array.from(sampledData), duration];
+                    const Input = [];
+                    Input[0] = Array([duration]);
+                    Input[1] = Array.from(sampledData);
+                    Input[2] = Array([parseFloat(F1Input.value)]);
+                    Input[3] = Array([parseFloat(dfInput.value)]);
                     const Output = getSolImage(Input);
                     const frequency = Output[0];
                     const magnitude = Output[1];
+                    const Indicators_band = Output[2];
+                    const Indicators_MISNR = Output[3];
+                    console.log(Indicators_band)
+                    //[Theta, Alpha, Beta, 
+                    // Theta / Alpha, Theta / Beta, Alpha / Beta, ...
+                    // (Theta + Alpha) / Beta, (Theta + Alpha), (Theta + Alpha + Beta)]
 
                     // Plot data
                     const x = Array.from(t);
@@ -282,6 +296,23 @@
 
                     const customTickFormat_2 = d => `${d.toFixed(0)} Hz`;
                     plot_(frequency, magnitude, spectrumSVG, customTickFormat_2, 'Spectrum', 'Frequency (Hz)', 'Magnitude');
+
+                    const Names = [
+                        "θ",
+                        "α",
+                        "β",
+                        "θ / α",
+                        "θ / β",
+                        "α / β",
+                        "(θ + α) / β",
+                        "(θ + α)",
+                        "(θ + α + β)"
+                    ];
+                    const customTickFormat_3 = d => `${Names[d-1]}`;
+                    let index = Array(1, 2, 3, 4, 5, 6, 7, 8, 9);
+                    plot_(index, Indicators_band, EEG_BandSVG, customTickFormat_3, 'EEG_Band', 'Band', 'Magnitude');
+
+
                 });
             };
         }

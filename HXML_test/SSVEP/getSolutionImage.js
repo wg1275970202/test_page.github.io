@@ -27,7 +27,7 @@ function getSolImage(Input) {
 
     let data_out_all=Array.from(outputs)
     ///////////////////////////////////////////////////////////
-    const n = [501, 501];
+    const n = [501, 501, 9, 2];
     const n_ = math.cumsum([0, ...n]);
     let Output = [];
     for (let i = 0; i < n.length; i++) {

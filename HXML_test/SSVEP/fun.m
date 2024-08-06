@@ -1,0 +1,77 @@
+function Indicators= fun(data, XX)
+F1=12;
+df=0.1;
+% Define constants
+NN = 100;
+Fs_ = 1000;
+L = length(data);
+P2A = @(Pxx) sqrt(Pxx * L * Fs_) / L * 2;
+
+% Compute periodogram
+frequencies = F1 + (0:NN-1) * df;
+
+Y_I = periodogram(data, [], frequencies, Fs_);
+
+
+Y_I = sqrt(Y_I);
+Y_I = Y_I > mean([max(Y_I), min(Y_I)]);
+
+% Compute MI
+YX = sum(Y_I(:) == XX);
+MI = bitsTransmittted(YX, NN);
+
+% Display MI
+disp("MI="+MI)
+% disp(MI)
+
+% Alpha Beta Theta bands
+S = frequencies;
+S0 = S(~XX);
+S1 = S(XX);
+
+disp("abc")
+df_=1/10;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Fre_range=0:df_:45;
+
+A_range=P2A(periodogram(data, [], Fre_range, Fs_));%输入参数Fre_range固定
+[Fre_range_,ia] = setdiff(Fre_range, S1);
+B_range=A_range(ia);
+
+
+Theta=sum(B_range(Fre_range_>=4  & Fre_range_<8 ));
+Alpha=sum(B_range(Fre_range_>=8  & Fre_range_<12));
+Beta =sum(B_range(Fre_range_>=12 & Fre_range_<35));
+
+ALL= Alpha+Beta+Theta;
+
+Theta =Theta ./ALL;
+Alpha =Alpha ./ALL;
+Beta  =Beta  ./ALL;
+
+
+disp("abc")
+% Indicator values
+Indicator_3band = [Theta, Alpha, Beta, ...
+    Theta / Alpha, Theta / Beta, Alpha / Beta, ...
+    (Theta + Alpha) / Beta, (Theta + Alpha), (Theta + Alpha + Beta)];
+
+% Display Indicator_3band
+disp("Alpha Beta Theta")
+
+% Compute SNR
+P_S0 = sum(periodogram(data, [], S0, Fs_));
+P_S1 = sum(periodogram(data, [], S1, Fs_));
+SNR = P_S1 / P_S0;
+disp("abc")
+% % Compute approximate entropy
+% approxEnt = approximateEntropy(data);
+% 
+% % Display approximate entropy
+% disp("approxEnt")
+
+
+% Indicators =[MI, Indicator_3band, SNR, approxEnt];
+Indicators =[Indicator_3band,MI, SNR];
+end
+
+

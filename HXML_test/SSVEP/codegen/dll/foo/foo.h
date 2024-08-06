@@ -2,7 +2,7 @@
 // File: foo.h
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 05-Aug-2024 10:41:23
+// C/C++ source code generated on  : 06-Aug-2024 01:31:17
 //
 
 #ifndef FOO_H
@@ -15,7 +15,7 @@
 #include <cstdlib>
 
 // Function Declarations
-FOO_DLL_EXPORT extern "C" void foo(const float input[60000], float B[1002]);
+FOO_DLL_EXPORT extern "C" void foo(const float input[60000], float Out[1013]);
 
 #endif
 //

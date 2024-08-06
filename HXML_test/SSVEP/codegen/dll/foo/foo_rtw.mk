@@ -2,7 +2,7 @@
 ## Makefile generated for component 'foo'. 
 ## 
 ## Makefile     : foo_rtw.mk
-## Generated on : Mon Aug 05 10:36:46 2024
+## Generated on : Tue Aug 06 01:32:04 2024
 ## Final product: ./foo.js
 ## Product type : dynamic-library
 ## 
@@ -160,7 +160,7 @@ DEFINES = $(DEFINES_) $(DEFINES_CUSTOM) $(DEFINES_STANDARD)
 ## SOURCE FILES
 ###########################################################################
 
-SRCS = $(START_DIR)/codegen/dll/foo/rt_nonfinite.cpp $(START_DIR)/codegen/dll/foo/rtGetNaN.cpp $(START_DIR)/codegen/dll/foo/rtGetInf.cpp $(START_DIR)/codegen/dll/foo/foo_initialize.cpp $(START_DIR)/codegen/dll/foo/foo_terminate.cpp $(START_DIR)/codegen/dll/foo/foo.cpp $(START_DIR)/codegen/dll/foo/minOrMax.cpp $(START_DIR)/codegen/dll/foo/czt.cpp $(START_DIR)/codegen/dll/foo/fft.cpp $(START_DIR)/codegen/dll/foo/ifft.cpp $(START_DIR)/codegen/dll/foo/FFTImplementationCallback.cpp
+SRCS = $(START_DIR)/codegen/dll/foo/rt_nonfinite.cpp $(START_DIR)/codegen/dll/foo/rtGetNaN.cpp $(START_DIR)/codegen/dll/foo/rtGetInf.cpp $(START_DIR)/codegen/dll/foo/foo_initialize.cpp $(START_DIR)/codegen/dll/foo/foo_terminate.cpp $(START_DIR)/codegen/dll/foo/foo.cpp $(START_DIR)/codegen/dll/foo/periodogram.cpp $(START_DIR)/codegen/dll/foo/minOrMax.cpp $(START_DIR)/codegen/dll/foo/log2.cpp $(START_DIR)/codegen/dll/foo/czt.cpp $(START_DIR)/codegen/dll/foo/mpower.cpp $(START_DIR)/codegen/dll/foo/fft.cpp $(START_DIR)/codegen/dll/foo/ifft.cpp $(START_DIR)/codegen/dll/foo/computeDFT.cpp $(START_DIR)/codegen/dll/foo/eml_setop.cpp $(START_DIR)/codegen/dll/foo/psdfreqvec.cpp $(START_DIR)/codegen/dll/foo/sum.cpp $(START_DIR)/codegen/dll/foo/mrdivide_helper.cpp $(START_DIR)/codegen/dll/foo/xnrm2.cpp $(START_DIR)/codegen/dll/foo/string1.cpp $(START_DIR)/codegen/dll/foo/FFTImplementationCallback.cpp $(START_DIR)/codegen/dll/foo/foo_rtwutil.cpp
 
 ALL_SRCS = $(SRCS)
 
@@ -168,7 +168,7 @@ ALL_SRCS = $(SRCS)
 ## OBJECTS
 ###########################################################################
 
-OBJS = rt_nonfinite.o rtGetNaN.o rtGetInf.o foo_initialize.o foo_terminate.o foo.o minOrMax.o czt.o fft.o ifft.o FFTImplementationCallback.o
+OBJS = rt_nonfinite.o rtGetNaN.o rtGetInf.o foo_initialize.o foo_terminate.o foo.o periodogram.o minOrMax.o log2.o czt.o mpower.o fft.o ifft.o computeDFT.o eml_setop.o psdfreqvec.o sum.o mrdivide_helper.o xnrm2.o string1.o FFTImplementationCallback.o foo_rtwutil.o
 
 ALL_OBJS = $(OBJS)
 
@@ -347,11 +347,23 @@ foo.o : $(START_DIR)/codegen/dll/foo/foo.cpp
 	$(CPP) $(CPPFLAGS) -o "$@" "$<"
 
 
+periodogram.o : $(START_DIR)/codegen/dll/foo/periodogram.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
 minOrMax.o : $(START_DIR)/codegen/dll/foo/minOrMax.cpp
 	$(CPP) $(CPPFLAGS) -o "$@" "$<"
 
 
+log2.o : $(START_DIR)/codegen/dll/foo/log2.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
 czt.o : $(START_DIR)/codegen/dll/foo/czt.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+mpower.o : $(START_DIR)/codegen/dll/foo/mpower.cpp
 	$(CPP) $(CPPFLAGS) -o "$@" "$<"
 
 
@@ -363,7 +375,39 @@ ifft.o : $(START_DIR)/codegen/dll/foo/ifft.cpp
 	$(CPP) $(CPPFLAGS) -o "$@" "$<"
 
 
+computeDFT.o : $(START_DIR)/codegen/dll/foo/computeDFT.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+eml_setop.o : $(START_DIR)/codegen/dll/foo/eml_setop.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+psdfreqvec.o : $(START_DIR)/codegen/dll/foo/psdfreqvec.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+sum.o : $(START_DIR)/codegen/dll/foo/sum.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+mrdivide_helper.o : $(START_DIR)/codegen/dll/foo/mrdivide_helper.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+xnrm2.o : $(START_DIR)/codegen/dll/foo/xnrm2.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+string1.o : $(START_DIR)/codegen/dll/foo/string1.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
 FFTImplementationCallback.o : $(START_DIR)/codegen/dll/foo/FFTImplementationCallback.cpp
+	$(CPP) $(CPPFLAGS) -o "$@" "$<"
+
+
+foo_rtwutil.o : $(START_DIR)/codegen/dll/foo/foo_rtwutil.cpp
 	$(CPP) $(CPPFLAGS) -o "$@" "$<"
 
 

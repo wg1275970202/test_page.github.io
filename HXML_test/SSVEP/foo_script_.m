@@ -18,7 +18,7 @@ cfg.Toolchain = 'Emscripten v3.1.60 | gmake (64-bit Windows)';
 %% Define argument types for entry-point 'foo'.
 ARGS = cell(1,1);
 % ARGS{1} = cell(2,1);
-ARGS{1}{1} = coder.typeof(single(0),[1 60e3]);
+ARGS{1}{1} = coder.typeof(single(0),[1 60e3],[0 0]);
 % ARGS{1}{2} = coder.typeof(single(0));
 
 % variable size (true) or fixed size (false).

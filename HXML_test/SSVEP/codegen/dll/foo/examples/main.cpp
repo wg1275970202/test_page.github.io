@@ -2,7 +2,7 @@
 // File: main.cpp
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 05-Aug-2024 10:41:23
+// C/C++ source code generated on  : 06-Aug-2024 01:31:17
 //
 
 /*************************************************************************/
@@ -35,6 +35,7 @@
 #include "foo.h"
 #include "foo_terminate.h"
 #include "rt_nonfinite.h"
+#include <cstring>
 
 // Function Declarations
 static void argInit_1x60000_real32_T(float result[60000]);
@@ -90,12 +91,12 @@ int main(int, char **)
 void main_foo()
 {
   static float fv[60000];
-  float B[1002];
+  float Out[1013];
   // Initialize function 'foo' input arguments.
   // Initialize function input argument 'input'.
   // Call the entry-point 'foo'.
   argInit_1x60000_real32_T(fv);
-  foo(fv, B);
+  foo(fv, Out);
 }
 
 //

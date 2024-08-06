@@ -2,7 +2,7 @@
 // File: FFTImplementationCallback.h
 //
 // MATLAB Coder version            : 23.2
-// C/C++ source code generated on  : 05-Aug-2024 10:41:23
+// C/C++ source code generated on  : 06-Aug-2024 01:31:17
 //
 
 #ifndef FFTIMPLEMENTATIONCALLBACK_H
@@ -26,6 +26,19 @@ public:
                                    const array<float, 2U> &costab,
                                    const array<float, 2U> &sintab,
                                    array<creal32_T, 1U> &y);
+  static void doHalfLengthRadix2(const array<float, 1U> &x, creal32_T y_data[],
+                                 int &y_size, int unsigned_nRows,
+                                 const float costab_data[],
+                                 const int costab_size[2],
+                                 const float sintab_data[]);
+  static void doHalfLengthBluestein(const array<float, 1U> &x,
+                                    creal32_T y_data[], int nrowsx, int nRows,
+                                    int nfft, const creal32_T wwc_data[],
+                                    int wwc_size, const float costab_data[],
+                                    const int costab_size[2],
+                                    const float sintab_data[],
+                                    const float costabinv_data[],
+                                    const float sintabinv_data[]);
 };
 
 } // namespace fft
