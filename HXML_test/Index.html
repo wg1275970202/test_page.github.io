@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTM & Bib Processor (Multiple Files)</title>
+    <title>DOCX & Bib Processor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
     <style>
         body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
         .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -40,11 +41,11 @@
 </head>
 <body>
     <div class="container">
-        <h1>HTM & Bib File Processor 📄📚</h1>
+        <h1>DOCX & Bib File Processor 📄📚</h1>
         
         <div class="input-group">
-            <label for="htmFile">1. Upload HTM File(s):</label>
-            <input type="file" id="htmFile" accept=".htm, .html" multiple>
+            <label for="docxFile">1. Upload DOCX File(s):</label>
+            <input type="file" id="docxFile" accept=".docx" multiple>
         </div>
 
         <div class="input-group">
@@ -63,12 +64,12 @@
 
         <div class="output-section">
             <h2>Aggregated Processed Text with DOIs (responseText_all) 📝</h2>
-            <textarea id="responseTextOutput" readonly placeholder="Processed HTM text with [DOI] from all files will appear here..."></textarea>
+            <textarea id="responseTextOutput" readonly placeholder="Processed text from DOCX files with [DOI] will appear here..."></textarea>
         </div>
 
         <div class="output-section">
             <h2>Aggregated Extracted DOIs (string_DOI) 🔗</h2>
-            <textarea id="doiStringOutput" readonly placeholder="Unique DOIs from all HTM files, each on a new line, will appear here..."></textarea>
+            <textarea id="doiStringOutput" readonly placeholder="Unique DOIs from DOCX files, each on a new line, will appear here..."></textarea>
         </div>
 
         <div class="output-section">
@@ -147,12 +148,19 @@
             return null;
         }
 
-        function processSingleHtmContent(htmlString, fileNameForErrorLog) {
+        // Processes a single HTML content string (now generated from DOCX)
+        function processConvertedHtmlContent(htmlString, fileNameForErrorLog) {
             try {
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlString, "text/html");
+                const doc = parser.parseFromString(htmlString, "text/html"); // Mammoth produces HTML
+                
+                // Extract text from the body. Mammoth usually wraps content in <p> tags.
+                // Using doc.body.innerText might be better than textContent to respect paragraph breaks from Word.
+                // However, textContent is closer to what was used before with HTM files.
+                // Let's stick to textContent for consistency unless issues arise.
                 let rawTextContent = doc.body.textContent || "";
                 let responseTextCurrentFile = rawTextContent;
+
                 let relatedEventsIndex = responseTextCurrentFile.indexOf(RELATED_EVENTS_MARKER);
                 if (relatedEventsIndex !== -1) {
                     responseTextCurrentFile = responseTextCurrentFile.substring(0, relatedEventsIndex).trim();
@@ -161,8 +169,9 @@
                 if (referencesIndexInMainText !== -1) {
                     responseTextCurrentFile = responseTextCurrentFile.substring(0, referencesIndexInMainText).trim();
                 }
+                
                 const orderedDoiStringsCurrentFile = [];
-                const links = doc.getElementsByTagName('a');
+                const links = doc.getElementsByTagName('a'); // Mammoth should preserve <a> tags for hyperlinks
                 for (let link of links) {
                     if (link.href && typeof link.href === 'string' && link.href.toLowerCase().includes('doi.org/')) {
                         const url = link.href.toLowerCase();
@@ -178,6 +187,7 @@
                         }
                     }
                 }
+                
                 let processedTextForThisFile = responseTextCurrentFile.replace(/\[(\d+)\]/g, (match, numberStr) => {
                     const citationNumber = parseInt(numberStr);
                     if (citationNumber > 0 && citationNumber <= orderedDoiStringsCurrentFile.length) {
@@ -186,31 +196,33 @@
                     }
                     return match;
                 });
+
                 const localDoisSet = new Set();
                 let matchDoi;
                 DOI_IN_BRACKET_REGEX.lastIndex = 0; 
                 while ((matchDoi = DOI_IN_BRACKET_REGEX.exec(processedTextForThisFile)) !== null) {
                     localDoisSet.add(matchDoi[1]);
                 }
-                return { processedText: processedTextForThisFile, dois: localDoisSet };
+                
+                return {
+                    processedText: processedTextForThisFile,
+                    dois: localDoisSet
+                };
             } catch (e) {
-                 throw new Error(`Error processing content of file ${fileNameForErrorLog}: ${e.message}`);
+                 throw new Error(`Error processing HTML content from file ${fileNameForErrorLog}: ${e.message}`);
             }
         }
 
         function downloadResponseTextIndex() {
             const textToDownload = document.getElementById('responseTextIndexOutput').value;
             const downloadButton = document.getElementById('downloadResponseTextIndexButton');
-
             if (!textToDownload.trim()) {
                 alert("There is no content to download.");
                 downloadButton.disabled = true; 
                 return;
             }
-
             const filename = "Text_with_CITE.txt"; 
             const blob = new Blob([textToDownload], { type: 'text/plain;charset=utf-8;' });
-            
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
@@ -223,7 +235,7 @@
         }
 
         async function processFiles() {
-            const htmFileInput = document.getElementById('htmFile');
+            const docxFileInput = document.getElementById('docxFile'); // Changed ID
             const bibFileInput = document.getElementById('bibFile');
             const citeCommandInput = document.getElementById('citeCommandInput');
             const responseTextOutput = document.getElementById('responseTextOutput');
@@ -236,38 +248,53 @@
             doiStringOutput.value = '';
             responseTextIndexOutput.value = '';
             errorMessageElement.textContent = '';
-            downloadIndexButton.disabled = true; // Disable download button at start
+            downloadIndexButton.disabled = true;
             globalResponseTextAll = "";
             globalUniqueDois.clear();
 
-            if (!htmFileInput.files || htmFileInput.files.length === 0) {
-                errorMessageElement.textContent = 'Please select at least one HTM file.';
+            if (!docxFileInput.files || docxFileInput.files.length === 0) {
+                errorMessageElement.textContent = 'Please select at least one DOCX file.';
+                return;
+            }
+            if (typeof mammoth === 'undefined') {
+                errorMessageElement.textContent = 'Mammoth.js library is not loaded. Please check your internet connection or the script inclusion.';
                 return;
             }
 
-            const htmFiles = Array.from(htmFileInput.files);
-            const fileProcessingPromises = htmFiles.map(htmFile => {
+            const docxFiles = Array.from(docxFileInput.files);
+            const fileProcessingPromises = docxFiles.map(docxFile => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.onload = (event) => {
+                    reader.onload = async (event) => { // Async to await mammoth.convertToHtml
                         try {
-                            const fileContent = event.target.result;
-                            const result = processSingleHtmContent(fileContent, htmFile.name);
+                            const arrayBuffer = event.target.result;
+                            const mammothResult = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+                            const htmlString = mammothResult.value;
+                            
+                            if (mammothResult.messages && mammothResult.messages.length > 0) {
+                                console.log(`Mammoth.js messages for ${docxFile.name}:`);
+                                mammothResult.messages.forEach(msg => console.log(`  - ${msg.type}: ${msg.message}`));
+                            }
+
+                            const result = processConvertedHtmlContent(htmlString, docxFile.name);
                             resolve(result);
-                        } catch (e) { reject(e); }
+                        } catch (e) { 
+                            console.error(`Error during DOCX conversion or processing for ${docxFile.name}:`, e);
+                            reject(new Error(`Processing failed for ${docxFile.name}: ${e.message}`));
+                        }
                     };
                     reader.onerror = () => {
-                        console.error(`FileReader error for ${htmFile.name}:`, reader.error);
-                        reject(new Error(`Failed to read HTM file: ${htmFile.name}`));
+                        console.error(`FileReader error for ${docxFile.name}:`, reader.error);
+                        reject(new Error(`Failed to read DOCX file: ${docxFile.name}`));
                     }
-                    reader.readAsText(htmFile);
+                    reader.readAsArrayBuffer(docxFile); // Read as ArrayBuffer for Mammoth
                 });
             });
 
             try {
-                const htmResults = await Promise.all(fileProcessingPromises);
-                globalResponseTextAll = htmResults.map(r => r.processedText).join("\n\n"); 
-                htmResults.forEach(r => { r.dois.forEach(doi => globalUniqueDois.add(doi)); });
+                const conversionResults = await Promise.all(fileProcessingPromises);
+                globalResponseTextAll = conversionResults.map(r => r.processedText).join("\n\n"); 
+                conversionResults.forEach(r => { r.dois.forEach(doi => globalUniqueDois.add(doi)); });
 
                 responseTextOutput.value = globalResponseTextAll;
                 const string_DOI = Array.from(globalUniqueDois).join('\n');
@@ -278,6 +305,7 @@
                         .catch(err => console.warn('Failed to copy aggregated DOIs to clipboard:', err));
                 }
 
+                // --- BibTeX Processing ---
                 if (bibFileInput.files && bibFileInput.files.length > 0) {
                     const bibFile = bibFileInput.files[0];
                     const bibReader = new FileReader();
@@ -297,7 +325,7 @@
                             const citeCommand = citeCommandInput.value.trim() || "citep";
                             let replacementsMade = 0;
 
-                            if (parsedBibData.length > 0) { // Only attempt replacement if bib data was parsed
+                            if (parsedBibData.length > 0) {
                                 Array.from(globalUniqueDois).forEach(doiFromHtm => { 
                                     const bibKey = findBibEntryKey(doiFromHtm, parsedBibData);
                                     if (bibKey) {
@@ -321,22 +349,19 @@
                                 responseTextIndexOutput.value = responseTextIndex;
                             }
                             
-                            if (replacementsMade > 0) {
-                                // Content is primarily the processed text with citations
-                            } else if (globalUniqueDois.size > 0 && parsedBibData.length > 0 && !messageForIndexOutput) {
-                                 responseTextIndexOutput.value += (responseTextIndexOutput.value.endsWith(globalResponseTextAll) ? "\n\n" : "") + "(No matching DOIs found in BibTeX file for DOIs in aggregated HTM text, or no citation keys for matched DOIs.)";
+                            if (replacementsMade > 0) { /* Primary content is with citations */ }
+                            else if (globalUniqueDois.size > 0 && parsedBibData.length > 0 && !messageForIndexOutput) {
+                                 responseTextIndexOutput.value += (responseTextIndexOutput.value.endsWith(globalResponseTextAll) ? "\n\n" : "") + "(No matching DOIs found in BibTeX file for DOIs in content, or no citation keys for matched DOIs.)";
                             } else if (globalUniqueDois.size === 0 && parsedBibData.length > 0 && !messageForIndexOutput) {
-                                responseTextIndexOutput.value += (responseTextIndexOutput.value.endsWith(globalResponseTextAll) ? "\n\n" : "") + "(No DOIs were extracted from the HTM files to match against BibTeX.)";
+                                responseTextIndexOutput.value += (responseTextIndexOutput.value.endsWith(globalResponseTextAll) ? "\n\n" : "") + "(No DOIs were extracted from the DOCX files to match against BibTeX.)";
                             }
                             
-                            // Enable download button if there's meaningful content in responseTextIndexOutput
                             downloadIndexButton.disabled = !responseTextIndexOutput.value.trim();
-                            if (replacementsMade > 0 && responseTextIndex.length > 0) { // Also copy if actual replacements happened
+                            if (replacementsMade > 0 && responseTextIndex.length > 0) {
                                 navigator.clipboard.writeText(responseTextIndex)
-                                    .then(() => console.log('Text with citations (from aggregated content) copied to clipboard!'))
+                                    .then(() => console.log('Text with citations copied to clipboard!'))
                                     .catch(err => console.warn('Failed to copy text with citations:', err));
                             }
-
 
                         } catch (e) {
                             console.error("Error processing BibTeX file:", e);
@@ -352,13 +377,13 @@
                     };
                     bibReader.readAsText(bibFile);
                 } else {
-                    responseTextIndexOutput.value = "No BibTeX file selected. Aggregated processed text with DOIs (responseText_all) is available above.";
-                    downloadIndexButton.disabled = true; // No "Text_with_CITE" content
+                    responseTextIndexOutput.value = "No BibTeX file selected. Aggregated processed text from DOCX (with DOIs) is available above.";
+                    downloadIndexButton.disabled = true; 
                 }
 
             } catch (error) { 
-                console.error("Error processing one or more HTM files:", error);
-                errorMessageElement.textContent = `Error processing HTM files: ${error.message}`;
+                console.error("Error processing one or more DOCX files:", error);
+                errorMessageElement.textContent = `Error processing DOCX files: ${error.message}`;
                 responseTextOutput.value = '';
                 doiStringOutput.value = '';
                 responseTextIndexOutput.value = '';
