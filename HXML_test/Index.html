@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTM & Bib Processor (Multiple Files)</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        h2 { color: #555; margin-top: 30px; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: bold;}
+        input[type="file"], input[type="text"] { margin-bottom: 5px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: calc(100% - 18px); box-sizing: border-box; }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        textarea {
+            width: 98%; 
+            box-sizing: border-box;
+            min-height: 150px;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .error { color: red; font-weight: bold; white-space: pre-wrap; }
+        .output-section { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HTM & Bib File Processor 📄📚</h1>
+        
+        <div class="input-group">
+            <label for="htmFile">1. Upload HTM File(s):</label>
+            <input type="file" id="htmFile" accept=".htm, .html" multiple>
+        </div>
+
+        <div class="input-group">
+            <label for="bibFile">2. (Optional) Upload BibTeX File (.bib):</label>
+            <input type="file" id="bibFile" accept=".bib">
+        </div>
+
+        <div class="input-group">
+            <label for="citeCommandInput">3. (Optional) LaTeX Cite Command:</label>
+            <input type="text" id="citeCommandInput" value="citep" placeholder="e.g., citet, citep, autocite">
+        </div>
+        
+        <button onclick="processFiles()">Process Files</button>
+
+        <div id="errorMessage" class="error"></div>
+
+        <div class="output-section">
+            <h2>Aggregated Processed Text with DOIs (responseText_all) 📝</h2>
+            <textarea id="responseTextOutput" readonly placeholder="Processed HTM text with [DOI] from all files will appear here..."></textarea>
+        </div>
+
+        <div class="output-section">
+            <h2>Aggregated Extracted DOIs (string_DOI) 🔗</h2>
+            <textarea id="doiStringOutput" readonly placeholder="Unique DOIs from all HTM files, each on a new line, will appear here..."></textarea>
+        </div>
+
+        <div class="output-section">
+            <h2>Text with LaTeX Citations (responseText_index)  <span style="font-family: 'Latin Modern Roman', 'TeX Gyre Termes', 'Times New Roman', Times, serif;">L<span>a</span>T<span>e</span>X</span></h2>
+            <textarea id="responseTextIndexOutput" readonly placeholder="Text with LaTeX citation commands (from aggregated content) will appear here if a BibTeX file is processed..."></textarea>
+            <button id="downloadResponseTextIndexButton" onclick="downloadResponseTextIndex()" disabled style="margin-top: 10px;">Download as .txt</button>
+        </div>
+    </div>
+
+    <script>
+        let globalResponseTextAll = "";
+        let globalUniqueDois = new Set(); 
+
+        const RELATED_EVENTS_MARKER = "相关事件";
+        const REFERENCES_MARKER = "参考文献";
+        const DOI_IN_BRACKET_REGEX = /\[(10\.\d{4,9}\/[^\[\]\s]+)\]/g;
+
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function parseBibtex(bibtexString) {
+            const entries = [];
+            const bibEntries = bibtexString.split(/\s*@\s*(?=[a-zA-Z])/); 
+            for (const entryChunk of bibEntries) {
+                if (entryChunk.trim() === "") continue;
+                const entryStr = "@" + entryChunk; 
+                const keyMatch = entryStr.match(/^@\s*([a-zA-Z]+)\s*\{\s*([^,\s]+)/);
+                if (!keyMatch) continue;
+                const citationKey = keyMatch[2].trim();
+                const doiRegex = /doi\s*=\s*[\{"']?\s*([^,\s}"']+)\s*[\}"']?/i;
+                const doiMatch = entryStr.match(doiRegex);
+                let doi = null;
+                if (doiMatch && doiMatch[1]) {
+                    doi = doiMatch[1].trim();
+                    if (doi.toLowerCase().startsWith('https://doi.org/')) {
+                        doi = doi.substring('https://doi.org/'.length);
+                    } else if (doi.toLowerCase().startsWith('http://doi.org/')) {
+                        doi = doi.substring('http://doi.org/'.length);
+                    }
+                    doi = doi.replace(/,$/, ''); 
+                }
+                if (citationKey && doi) {
+                    entries.push({ key: citationKey, doi: doi, raw: entryStr });
+                }
+            }
+            return entries;
+        }
+        
+        function normalizeDoiForComparison(doiString) {
+            if (!doiString || typeof doiString !== 'string') return "";
+            let normalized = doiString.toLowerCase();
+            const prefixes = ['https://doi.org/', 'http://doi.org/'];
+            for (const prefix of prefixes) {
+                if (normalized.startsWith(prefix)) {
+                    normalized = normalized.substring(prefix.length);
+                    break;
+                }
+            }
+            try {
+                normalized = decodeURIComponent(normalized);
+            } catch (e) { /* console.warn("decodeURIComponent failed for DOI:", normalized, e); */ }
+            return normalized.replace(/[^\w]/g, '');
+        }
+
+        function findBibEntryKey(targetDoi, parsedBibData) {
+            const normalizedTargetDoi = normalizeDoiForComparison(targetDoi);
+            if (!normalizedTargetDoi) return null;
+            for (const entry of parsedBibData) {
+                const normalizedBibDoi = normalizeDoiForComparison(entry.doi);
+                if (normalizedBibDoi && normalizedTargetDoi && normalizedBibDoi.includes(normalizedTargetDoi)) {
+                    return entry.key; 
+                }
+            }
+            return null;
+        }
+
+        function processSingleHtmContent(htmlString, fileNameForErrorLog) {
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlString, "text/html");
+                let rawTextContent = doc.body.textContent || "";
+                let responseTextCurrentFile = rawTextContent;
+                let relatedEventsIndex = responseTextCurrentFile.indexOf(RELATED_EVENTS_MARKER);
+                if (relatedEventsIndex !== -1) {
+                    responseTextCurrentFile = responseTextCurrentFile.substring(0, relatedEventsIndex).trim();
+                }
+                let referencesIndexInMainText = responseTextCurrentFile.indexOf(REFERENCES_MARKER);
+                if (referencesIndexInMainText !== -1) {
+                    responseTextCurrentFile = responseTextCurrentFile.substring(0, referencesIndexInMainText).trim();
+                }
+                const orderedDoiStringsCurrentFile = [];
+                const links = doc.getElementsByTagName('a');
+                for (let link of links) {
+                    if (link.href && typeof link.href === 'string' && link.href.toLowerCase().includes('doi.org/')) {
+                        const url = link.href.toLowerCase();
+                        const doiPrefix = 'doi.org/';
+                        const doiStartIndex = url.indexOf(doiPrefix);
+                        if (doiStartIndex !== -1) {
+                            let doi = url.substring(doiStartIndex + doiPrefix.length);
+                            doi = doi.split('?')[0].split('#')[0];
+                            doi = doi.replace(/[\]\.]+$/, '');
+                            if (doi.startsWith('10.') && doi.includes('/')) {
+                                orderedDoiStringsCurrentFile.push(doi);
+                            }
+                        }
+                    }
+                }
+                let processedTextForThisFile = responseTextCurrentFile.replace(/\[(\d+)\]/g, (match, numberStr) => {
+                    const citationNumber = parseInt(numberStr);
+                    if (citationNumber > 0 && citationNumber <= orderedDoiStringsCurrentFile.length) {
+                        const actualDoi = orderedDoiStringsCurrentFile[citationNumber - 1];
+                        return `[${actualDoi}]`;
+                    }
+                    return match;
+                });
+                const localDoisSet = new Set();
+                let matchDoi;
+                DOI_IN_BRACKET_REGEX.lastIndex = 0; 
+                while ((matchDoi = DOI_IN_BRACKET_REGEX.exec(processedTextForThisFile)) !== null) {
+                    localDoisSet.add(matchDoi[1]);
+                }
+                return { processedText: processedTextForThisFile, dois: localDoisSet };
+            } catch (e) {
+                 throw new Error(`Error processing content of file ${fileNameForErrorLog}: ${e.message}`);
+            }
+        }
+
+        function downloadResponseTextIndex() {
+            const textToDownload = document.getElementById('responseTextIndexOutput').value;
+            const downloadButton = document.getElementById('downloadResponseTextIndexButton');
+
+            if (!textToDownload.trim()) {
+                alert("There is no content to download.");
+                downloadButton.disabled = true; 
+                return;
+            }
+
+            const filename = "Text_with_CITE.txt"; 
+            const blob = new Blob([textToDownload], { type: 'text/plain;charset=utf-8;' });
+            
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        async function processFiles() {
+            const htmFileInput = document.getElementById('htmFile');
+            const bibFileInput = document.getElementById('bibFile');
+            const citeCommandInput = document.getElementById('citeCommandInput');
+            const responseTextOutput = document.getElementById('responseTextOutput');
+            const doiStringOutput = document.getElementById('doiStringOutput');
+            const responseTextIndexOutput = document.getElementById('responseTextIndexOutput');
+            const errorMessageElement = document.getElementById('errorMessage');
+            const downloadIndexButton = document.getElementById('downloadResponseTextIndexButton');
+
+            responseTextOutput.value = '';
+            doiStringOutput.value = '';
+            responseTextIndexOutput.value = '';
+            errorMessageElement.textContent = '';
+            downloadIndexButton.disabled = true; // Disable download button at start
+            globalResponseTextAll = "";
+            globalUniqueDois.clear();
+
+            if (!htmFileInput.files || htmFileInput.files.length === 0) {
+                errorMessageElement.textContent = 'Please select at least one HTM file.';
+                return;
+            }
+
+            const htmFiles = Array.from(htmFileInput.files);
+            const fileProcessingPromises = htmFiles.map(htmFile => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const fileContent = event.target.result;
+                            const result = processSingleHtmContent(fileContent, htmFile.name);
+                            resolve(result);
+                        } catch (e) { reject(e); }
+                    };
+                    reader.onerror = () => {
+                        console.error(`FileReader error for ${htmFile.name}:`, reader.error);
+                        reject(new Error(`Failed to read HTM file: ${htmFile.name}`));
+                    }
+                    reader.readAsText(htmFile);
+                });
+            });
+
+            try {
+                const htmResults = await Promise.all(fileProcessingPromises);
+                globalResponseTextAll = htmResults.map(r => r.processedText).join("\n\n"); 
+                htmResults.forEach(r => { r.dois.forEach(doi => globalUniqueDois.add(doi)); });
+
+                responseTextOutput.value = globalResponseTextAll;
+                const string_DOI = Array.from(globalUniqueDois).join('\n');
+                doiStringOutput.value = string_DOI;
+                if (string_DOI.length > 0) {
+                    navigator.clipboard.writeText(string_DOI)
+                        .then(() => console.log('Aggregated DOIs copied to clipboard!'))
+                        .catch(err => console.warn('Failed to copy aggregated DOIs to clipboard:', err));
+                }
+
+                if (bibFileInput.files && bibFileInput.files.length > 0) {
+                    const bibFile = bibFileInput.files[0];
+                    const bibReader = new FileReader();
+                    bibReader.onload = function(bibEvent) {
+                        try {
+                            const bibtexString = bibEvent.target.result;
+                            const parsedBibData = parseBibtex(bibtexString);
+                            let messageForIndexOutput = "";
+                            
+                            if (parsedBibData.length === 0 && bibtexString.trim().length > 0) {
+                               messageForIndexOutput = "Could not parse any valid entries with DOIs from the BibTeX file.\n\n" + globalResponseTextAll;
+                            } else if (bibtexString.trim().length === 0) {
+                               messageForIndexOutput = "BibTeX file is empty.\n\n" + globalResponseTextAll;
+                            }
+
+                            let responseTextIndex = globalResponseTextAll; 
+                            const citeCommand = citeCommandInput.value.trim() || "citep";
+                            let replacementsMade = 0;
+
+                            if (parsedBibData.length > 0) { // Only attempt replacement if bib data was parsed
+                                Array.from(globalUniqueDois).forEach(doiFromHtm => { 
+                                    const bibKey = findBibEntryKey(doiFromHtm, parsedBibData);
+                                    if (bibKey) {
+                                        const escapedDoi = escapeRegExp(doiFromHtm);
+                                        const regexPatternToSearch = `\\[${escapedDoi}\\]`;
+                                        const replacementString = `\\${citeCommand}{${bibKey}}`;
+                                        try {
+                                            responseTextIndex = responseTextIndex.replace(new RegExp(regexPatternToSearch, 'g'), replacementString);
+                                            replacementsMade++;
+                                        } catch (e) {
+                                            console.error(`Failed to replace DOI [${doiFromHtm}] with pattern "${regexPatternToSearch}"`, e);
+                                            errorMessageElement.textContent += (errorMessageElement.textContent ? '\n' : '') + `Error during replacement for DOI: ${doiFromHtm}. Check console.`;
+                                        }
+                                    }
+                                });
+                            }
+                            
+                            if (messageForIndexOutput) {
+                                responseTextIndexOutput.value = messageForIndexOutput;
+                            } else {
+                                responseTextIndexOutput.value = responseTextIndex;
+                            }
+                            
+                            if (replacementsMade > 0) {
+                                // Content is primarily the processed text with citations
+                            } else if (globalUniqueDois.size > 0 && parsedBibData.length > 0 && !messageForIndexOutput) {
+                                 responseTextIndexOutput.value += (responseTextIndexOutput.value.endsWith(globalResponseTextAll) ? "\n\n" : "") + "(No matching DOIs found in BibTeX file for DOIs in aggregated HTM text, or no citation keys for matched DOIs.)";
+                            } else if (globalUniqueDois.size === 0 && parsedBibData.length > 0 && !messageForIndexOutput) {
+                                responseTextIndexOutput.value += (responseTextIndexOutput.value.endsWith(globalResponseTextAll) ? "\n\n" : "") + "(No DOIs were extracted from the HTM files to match against BibTeX.)";
+                            }
+                            
+                            // Enable download button if there's meaningful content in responseTextIndexOutput
+                            downloadIndexButton.disabled = !responseTextIndexOutput.value.trim();
+                            if (replacementsMade > 0 && responseTextIndex.length > 0) { // Also copy if actual replacements happened
+                                navigator.clipboard.writeText(responseTextIndex)
+                                    .then(() => console.log('Text with citations (from aggregated content) copied to clipboard!'))
+                                    .catch(err => console.warn('Failed to copy text with citations:', err));
+                            }
+
+
+                        } catch (e) {
+                            console.error("Error processing BibTeX file:", e);
+                            errorMessageElement.textContent += (errorMessageElement.textContent ? '\n' : '') + `Error processing BibTeX file: ${e.message}`;
+                            responseTextIndexOutput.value = "An error occurred during BibTeX processing.";
+                            downloadIndexButton.disabled = true;
+                        }
+                    };
+                    bibReader.onerror = function() {
+                        errorMessageElement.textContent += (errorMessageElement.textContent ? '\n' : '') + 'Failed to read the BibTeX file.';
+                        console.error("BibTeX FileReader error");
+                        downloadIndexButton.disabled = true;
+                    };
+                    bibReader.readAsText(bibFile);
+                } else {
+                    responseTextIndexOutput.value = "No BibTeX file selected. Aggregated processed text with DOIs (responseText_all) is available above.";
+                    downloadIndexButton.disabled = true; // No "Text_with_CITE" content
+                }
+
+            } catch (error) { 
+                console.error("Error processing one or more HTM files:", error);
+                errorMessageElement.textContent = `Error processing HTM files: ${error.message}`;
+                responseTextOutput.value = '';
+                doiStringOutput.value = '';
+                responseTextIndexOutput.value = '';
+                downloadIndexButton.disabled = true;
+            }
+        }
+    </script>
+</body>
+</html>
