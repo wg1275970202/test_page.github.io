@@ -1,18 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DOCX & Bib Processor</title>
+    <title>DOCX, DOI to BibTeX, & Cite Processor</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/citation-js@0.6.7/build/citation.min.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
-        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; }
-        h2 { color: #555; margin-top: 30px; }
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; margin-bottom: 5px; font-weight: bold;}
-        input[type="file"], input[type="text"] { margin-bottom: 5px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: calc(100% - 18px); box-sizing: border-box; }
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 { font-size: 1.8em; }
+        h2 { margin-top: 30px; font-size: 1.4em; color: #444; border-bottom: 1px solid #eee; padding-bottom: 5px;}
+        h3 { margin-top: 20px; font-size: 1.2em; color: #333;}
+
+
+        .input-group,
+        .action-group,
+        .output-section,
+        .choice-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .input-group label,
+        .choice-group label {
+            display: block;
+            margin-bottom: 8px; /* Increased margin */
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="file"],
+        input[type="text"] {
+            margin-bottom: 10px; /* Increased margin */
+            padding: 10px; /* Increased padding */
+            border: 1px solid #ccc; /* Slightly darker border */
+            border-radius: 4px;
+            width: calc(100% - 22px); /* Adjusted for padding */
+            box-sizing: border-box;
+        }
+
         button {
             padding: 10px 15px;
             background-color: #007bff;
@@ -20,84 +62,198 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 1em; /* Relative font size */
+            margin-right: 10px;
+            margin-top: 5px;
         }
-        button:hover { background-color: #0056b3; }
-        button:disabled { background-color: #cccccc; cursor: not-allowed; }
-        textarea {
-            width: 98%; 
+
+        button:hover:not(:disabled) { /* Apply hover only if not disabled */
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        textarea,
+        pre {
+            width: 100%; /* Use 100% for better box model handling */
             box-sizing: border-box;
-            min-height: 150px;
+            min-height: 120px; /* Adjusted min-height */
             margin-top: 10px;
             padding: 10px;
-            border: 1px solid #ddd;
+            border: 1px solid #ccc;
             border-radius: 4px;
             font-family: monospace;
-            font-size: 14px;
+            font-size: 0.9em; /* Slightly smaller font for mono */
+            background-color: #f0f0f0;
         }
-        .error { color: red; font-weight: bold; white-space: pre-wrap; }
-        .output-section { margin-top: 20px; }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #e9e9e9; /* Differentiate pre background */
+        }
+
+
+        .error {
+            color: #d9534f; /* Bootstrap danger color */
+            font-weight: bold;
+            white-space: pre-wrap;
+            padding: 10px;
+            border: 1px solid #d9534f;
+            border-radius: 4px;
+            background-color: #f2dede;
+            margin-bottom:15px;
+        }
+         .error:empty { display: none; } /* Hide if empty */
+
+
+        .status {
+            color: #5cb85c; /* Bootstrap success color */
+            font-weight: bold;
+            padding: 10px;
+            border: 1px solid #5cb85c;
+            border-radius: 4px;
+            background-color: #dff0d8;
+            margin-bottom:15px;
+        }
+        .status:empty { display:none; } /* Hide if empty */
+
+
+        #bibSourceOptions label {
+            font-weight: normal;
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 5px; /* Ensure vertical spacing if they wrap */
+        }
+
+        #bibSourceOptions input[type="radio"] {
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+
+        #uploadedBibFileGroup {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            background-color: #fff;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>DOCX & Bib File Processor 📄📚</h1>
-        
+        <h1>Advanced Document Processor 📄➡️📚➡️<span style="font-family: 'Latin Modern Roman', 'TeX Gyre Termes', 'Times New Roman', Times, serif;">L<span>a</span>T<span>e</span>X</span></h1>
+
         <div class="input-group">
-            <label for="docxFile">1. Upload DOCX File(s):</label>
+            <h3>Step 1: Upload DOCX File(s)</h3>
+            <label for="docxFile">Select DOCX File(s):</label>
             <input type="file" id="docxFile" accept=".docx" multiple>
+            <button id="processDocxButton" onclick="processDocxStage()">Process DOCX & Extract DOIs</button>
         </div>
-
-        <div class="input-group">
-            <label for="bibFile">2. (Optional) Upload BibTeX File (.bib):</label>
-            <input type="file" id="bibFile" accept=".bib">
-        </div>
-
-        <div class="input-group">
-            <label for="citeCommandInput">3. (Optional) LaTeX Cite Command:</label>
-            <input type="text" id="citeCommandInput" value="citep" placeholder="e.g., citet, citep, autocite">
-        </div>
-        
-        <button onclick="processFiles()">Process Files</button>
 
         <div id="errorMessage" class="error"></div>
+        <div id="statusMessage" class="status"></div>
 
-        <div class="output-section">
-            <h2>Aggregated Processed Text with DOIs (responseText_all) 📝</h2>
-            <textarea id="responseTextOutput" readonly placeholder="Processed text from DOCX files with [DOI] will appear here..."></textarea>
+        <div class="output-section" id="docxOutputSection" style="display:none;">
+            <h2>Processed Text with [DOI] Placeholders (Aggregated)</h2>
+            <textarea id="responseTextOutput" readonly placeholder="Text from DOCX files with [DOI]s will appear here."></textarea>
+            <h2>Extracted Unique DOIs (Aggregated)</h2>
+            <textarea id="doiStringOutput" readonly placeholder="Unique DOIs found in DOCX files."></textarea>
         </div>
 
-        <div class="output-section">
-            <h2>Aggregated Extracted DOIs (string_DOI) 🔗</h2>
-            <textarea id="doiStringOutput" readonly placeholder="Unique DOIs from DOCX files, each on a new line, will appear here..."></textarea>
+        <div class="output-section" id="generatedBibSection" style="display:none;">
+            <h3>Step 2a: BibTeX Generated from Document DOIs</h3>
+            <pre id="generatedBibtexOutput"></pre>
+            <button id="downloadGeneratedBibButton" onclick="downloadGeneratedBibtex()" disabled>Download Generated
+                .bib</button>
         </div>
 
-        <div class="output-section">
-            <h2>Text with LaTeX Citations (responseText_index)  <span style="font-family: 'Latin Modern Roman', 'TeX Gyre Termes', 'Times New Roman', Times, serif;">L<span>a</span>T<span>e</span>X</span></h2>
-            <textarea id="responseTextIndexOutput" readonly placeholder="Text with LaTeX citation commands (from aggregated content) will appear here if a BibTeX file is processed..."></textarea>
-            <button id="downloadResponseTextIndexButton" onclick="downloadResponseTextIndex()" disabled style="margin-top: 10px;">Download as .txt</button>
+        <div class="choice-group" id="bibSourceChoiceSection" style="display:none;">
+            <h3>Step 2b: Choose BibTeX Source for Citations</h3>
+            <div id="bibSourceOptions">
+                <label><input type="radio" name="bibSource" value="generated" checked
+                        onchange="toggleBibUpload(this.value)"> Use BibTeX generated from document DOIs</label>
+                <label><input type="radio" name="bibSource" value="uploaded" onchange="toggleBibUpload(this.value)">
+                    Upload my own .bib file</label>
+            </div>
+            <div id="uploadedBibFileGroup" style="display:none;"> <label for="bibFile">Upload Custom BibTeX File
+                    (.bib):</label>
+                <input type="file" id="bibFile" accept=".bib">
+            </div>
+        </div>
+
+        <div class="action-group" id="latexCiteActionSection" style="display:none;">
+            <h3>Step 3: Generate Text with LaTeX Citations</h3>
+            <label for="citeCommandInput">LaTeX Cite Command:</label>
+            <input type="text" id="citeCommandInput" value="citep" placeholder="e.g., citet, citep, autocite">
+            <button id="generateLatexButton" onclick="generateLatexCitationsStage()" disabled>Generate LaTeX
+                Citations</button>
+        </div>
+
+        <div class="output-section" id="latexOutputSection" style="display:none;">
+            <h2>Final Text with LaTeX Citations (responseText_index)</h2>
+            <textarea id="responseTextIndexOutput" readonly placeholder="Final text with LaTeX citations."></textarea>
+            <button id="downloadResponseTextIndexButton" onclick="downloadResponseTextIndex()" disabled>Download as
+                .txt</button>
         </div>
     </div>
 
     <script>
         let globalResponseTextAll = "";
-        let globalUniqueDois = new Set(); 
+        let globalUniqueDois = new Set();
+        let generatedBibtexString = "";
 
         const RELATED_EVENTS_MARKER = "相关事件";
         const REFERENCES_MARKER = "参考文献";
         const DOI_IN_BRACKET_REGEX = /\[(10\.\d{4,9}\/[^\[\]\s]+)\]/g;
-
+        const Cite = require('citation-js')
+        // 'Cite' will be available globally from the CDN script tag for citation-js
 
         function escapeRegExp(string) {
             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
 
+        function setStatus(message, isError = false) {
+            const statusEl = document.getElementById('statusMessage');
+            const errorEl = document.getElementById('errorMessage');
+            if (isError) {
+                errorEl.textContent = message;
+                statusEl.textContent = '';
+            } else {
+                statusEl.textContent = message;
+                errorEl.textContent = '';
+            }
+        }
+
+        function downloadText(filename, text) {
+            if (!text || !text.trim()) {
+                alert("No content to download.");
+                return;
+            }
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
         function parseBibtex(bibtexString) {
             const entries = [];
-            const bibEntries = bibtexString.split(/\s*@\s*(?=[a-zA-Z])/); 
+            if (!bibtexString || typeof bibtexString !== 'string') return entries;
+            const bibEntries = bibtexString.split(/\s*@\s*(?=[a-zA-Z])/);
             for (const entryChunk of bibEntries) {
                 if (entryChunk.trim() === "") continue;
-                const entryStr = "@" + entryChunk; 
+                const entryStr = "@" + entryChunk;
                 const keyMatch = entryStr.match(/^@\s*([a-zA-Z]+)\s*\{\s*([^,\s]+)/);
                 if (!keyMatch) continue;
                 const citationKey = keyMatch[2].trim();
@@ -111,15 +267,15 @@
                     } else if (doi.toLowerCase().startsWith('http://doi.org/')) {
                         doi = doi.substring('http://doi.org/'.length);
                     }
-                    doi = doi.replace(/,$/, ''); 
+                    doi = doi.replace(/,$/, '');
                 }
-                if (citationKey && doi) {
-                    entries.push({ key: citationKey, doi: doi, raw: entryStr });
+                if (citationKey) {
+                    entries.push({ key: citationKey, doi: doi || null, raw: entryStr });
                 }
             }
             return entries;
         }
-        
+
         function normalizeDoiForComparison(doiString) {
             if (!doiString || typeof doiString !== 'string') return "";
             let normalized = doiString.toLowerCase();
@@ -130,9 +286,7 @@
                     break;
                 }
             }
-            try {
-                normalized = decodeURIComponent(normalized);
-            } catch (e) { /* console.warn("decodeURIComponent failed for DOI:", normalized, e); */ }
+            try { normalized = decodeURIComponent(normalized); } catch (e) { }
             return normalized.replace(/[^\w]/g, '');
         }
 
@@ -140,38 +294,29 @@
             const normalizedTargetDoi = normalizeDoiForComparison(targetDoi);
             if (!normalizedTargetDoi) return null;
             for (const entry of parsedBibData) {
-                const normalizedBibDoi = normalizeDoiForComparison(entry.doi);
-                if (normalizedBibDoi && normalizedTargetDoi && normalizedBibDoi.includes(normalizedTargetDoi)) {
-                    return entry.key; 
+                if (entry.doi) {
+                    const normalizedBibDoi = normalizeDoiForComparison(entry.doi);
+                    if (normalizedBibDoi && normalizedTargetDoi && normalizedBibDoi.includes(normalizedTargetDoi)) {
+                        return entry.key;
+                    }
                 }
             }
             return null;
         }
 
-        // Processes a single HTML content string (now generated from DOCX)
         function processConvertedHtmlContent(htmlString, fileNameForErrorLog) {
             try {
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlString, "text/html"); // Mammoth produces HTML
-                
-                // Extract text from the body. Mammoth usually wraps content in <p> tags.
-                // Using doc.body.innerText might be better than textContent to respect paragraph breaks from Word.
-                // However, textContent is closer to what was used before with HTM files.
-                // Let's stick to textContent for consistency unless issues arise.
+                const doc = parser.parseFromString(htmlString, "text/html");
                 let rawTextContent = doc.body.textContent || "";
                 let responseTextCurrentFile = rawTextContent;
-
                 let relatedEventsIndex = responseTextCurrentFile.indexOf(RELATED_EVENTS_MARKER);
-                if (relatedEventsIndex !== -1) {
-                    responseTextCurrentFile = responseTextCurrentFile.substring(0, relatedEventsIndex).trim();
-                }
+                if (relatedEventsIndex !== -1) responseTextCurrentFile = responseTextCurrentFile.substring(0, relatedEventsIndex).trim();
                 let referencesIndexInMainText = responseTextCurrentFile.indexOf(REFERENCES_MARKER);
-                if (referencesIndexInMainText !== -1) {
-                    responseTextCurrentFile = responseTextCurrentFile.substring(0, referencesIndexInMainText).trim();
-                }
-                
+                if (referencesIndexInMainText !== -1) responseTextCurrentFile = responseTextCurrentFile.substring(0, referencesIndexInMainText).trim();
+
                 const orderedDoiStringsCurrentFile = [];
-                const links = doc.getElementsByTagName('a'); // Mammoth should preserve <a> tags for hyperlinks
+                const links = doc.getElementsByTagName('a');
                 for (let link of links) {
                     if (link.href && typeof link.href === 'string' && link.href.toLowerCase().includes('doi.org/')) {
                         const url = link.href.toLowerCase();
@@ -179,85 +324,135 @@
                         const doiStartIndex = url.indexOf(doiPrefix);
                         if (doiStartIndex !== -1) {
                             let doi = url.substring(doiStartIndex + doiPrefix.length);
-                            doi = doi.split('?')[0].split('#')[0];
-                            doi = doi.replace(/[\]\.]+$/, '');
-                            if (doi.startsWith('10.') && doi.includes('/')) {
-                                orderedDoiStringsCurrentFile.push(doi);
-                            }
+                            doi = doi.split('?')[0].split('#')[0].replace(/[\]\.]+$/, '');
+                            if (doi.startsWith('10.') && doi.includes('/')) orderedDoiStringsCurrentFile.push(doi);
                         }
                     }
                 }
-                
                 let processedTextForThisFile = responseTextCurrentFile.replace(/\[(\d+)\]/g, (match, numberStr) => {
                     const citationNumber = parseInt(numberStr);
                     if (citationNumber > 0 && citationNumber <= orderedDoiStringsCurrentFile.length) {
-                        const actualDoi = orderedDoiStringsCurrentFile[citationNumber - 1];
-                        return `[${actualDoi}]`;
+                        return `[${orderedDoiStringsCurrentFile[citationNumber - 1]}]`;
                     }
                     return match;
                 });
-
                 const localDoisSet = new Set();
                 let matchDoi;
-                DOI_IN_BRACKET_REGEX.lastIndex = 0; 
-                while ((matchDoi = DOI_IN_BRACKET_REGEX.exec(processedTextForThisFile)) !== null) {
-                    localDoisSet.add(matchDoi[1]);
-                }
-                
-                return {
-                    processedText: processedTextForThisFile,
-                    dois: localDoisSet
-                };
+                DOI_IN_BRACKET_REGEX.lastIndex = 0;
+                while ((matchDoi = DOI_IN_BRACKET_REGEX.exec(processedTextForThisFile)) !== null) localDoisSet.add(matchDoi[1]);
+                return { processedText: processedTextForThisFile, dois: localDoisSet };
             } catch (e) {
-                 throw new Error(`Error processing HTML content from file ${fileNameForErrorLog}: ${e.message}`);
+                throw new Error(`Error processing HTML from ${fileNameForErrorLog}: ${e.message}`);
             }
+        }
+
+        async function generateBibtexFromDoisJs(doiSet) {
+            if (typeof Cite === 'undefined') {
+                setStatus("Citation.js library is not loaded.", true);
+                throw new Error("Citation.js library is not loaded.");
+            }
+            if (!doiSet || doiSet.size === 0) {
+                return "";
+            }
+            setStatus(`Fetching BibTeX for ${doiSet.size} DOIs... This may take a moment.`);
+            const dois = Array.from(doiSet);
+            const bibtexErrorMessages = []; // To store specific error messages for display
+
+            const citePromises = dois.map(doi =>
+                Cite.async(doi).then(cite => {
+                    try {
+                        return cite.format('biblatex'); // Using 'biblatex' format
+                    } catch (formatError) {
+                        console.warn(`Could not format BibTeX for DOI: ${doi}`, formatError);
+                        bibtexErrorMessages.push(`Failed to format BibTeX for DOI ${doi}: ${formatError.message}`);
+                        return `% ERROR: Could not format BibTeX for DOI: ${doi} - ${formatError.message}\n\n`;
+                    }
+                }).catch(error => {
+                    console.warn(`Failed to fetch/process DOI: ${doi}`, error);
+                    bibtexErrorMessages.push(`Failed to retrieve BibTeX for DOI ${doi}: ${error.message}`);
+                    return `% ERROR: Failed to retrieve BibTeX for DOI: ${doi} - ${error.message}\n\n`;
+                })
+            );
+            
+            const bibtexResults = await Promise.all(citePromises); // All promises resolve to strings (BibTeX or error comment)
+            
+            const successfulEntries = bibtexResults.filter(r => r && !r.startsWith("% ERROR"));
+            setStatus(`BibTeX generation complete. ${successfulEntries.length} of ${dois.length} DOIs successfully processed into BibTeX.`);
+            
+            if (bibtexErrorMessages.length > 0) {
+                const errorSummary = `Encountered issues with ${bibtexErrorMessages.length} DOI(s). Check generated BibTeX comments or console for details.`;
+                 // Append to existing status or show in a dedicated error spot for this step
+                const doiFetchErrorsEl = document.getElementById('doiFetchErrors'); // Assuming this element exists or is added
+                if (doiFetchErrorsEl) doiFetchErrorsEl.textContent = errorSummary; else console.warn(errorSummary);
+            }
+            
+            return bibtexResults.map(s => s.trim()).join("\n\n").trim();
+        }
+
+        function downloadGeneratedBibtex() {
+            downloadText("generated_references.bib", generatedBibtexString);
         }
 
         function downloadResponseTextIndex() {
-            const textToDownload = document.getElementById('responseTextIndexOutput').value;
-            const downloadButton = document.getElementById('downloadResponseTextIndexButton');
-            if (!textToDownload.trim()) {
-                alert("There is no content to download.");
-                downloadButton.disabled = true; 
-                return;
-            }
-            const filename = "Text_with_CITE.txt"; 
-            const blob = new Blob([textToDownload], { type: 'text/plain;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", filename);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            downloadText("Text_with_CITE.txt", document.getElementById('responseTextIndexOutput').value);
         }
 
-        async function processFiles() {
-            const docxFileInput = document.getElementById('docxFile'); // Changed ID
-            const bibFileInput = document.getElementById('bibFile');
-            const citeCommandInput = document.getElementById('citeCommandInput');
-            const responseTextOutput = document.getElementById('responseTextOutput');
-            const doiStringOutput = document.getElementById('doiStringOutput');
-            const responseTextIndexOutput = document.getElementById('responseTextIndexOutput');
-            const errorMessageElement = document.getElementById('errorMessage');
-            const downloadIndexButton = document.getElementById('downloadResponseTextIndexButton');
+        function toggleBibUpload(selectedValue) {
+            document.getElementById('uploadedBibFileGroup').style.display = selectedValue === 'uploaded' ? 'block' : 'none';
+        }
 
-            responseTextOutput.value = '';
-            doiStringOutput.value = '';
-            responseTextIndexOutput.value = '';
-            errorMessageElement.textContent = '';
-            downloadIndexButton.disabled = true;
+        function resetStageUI() {
+            setStatus('');
+            ['docxOutputSection', 'generatedBibSection', 'bibSourceChoiceSection', 'latexCiteActionSection', 'latexOutputSection'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            ['responseTextOutput', 'doiStringOutput', 'responseTextIndexOutput'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            
+            const genBibOutput = document.getElementById('generatedBibtexOutput');
+            if (genBibOutput) genBibOutput.textContent = ''; // Use textContent for <pre>
+
+            document.getElementById('processDocxButton').disabled = false;
+            ['downloadGeneratedBibButton', 'generateLatexButton', 'downloadResponseTextIndexButton'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = true;
+            });
+
+            // Optionally reset file inputs, though user might want to re-process same files.
+            // document.getElementById('docxFile').value = '';
+            // const bibFileInput = document.getElementById('bibFile');
+            // if (bibFileInput) bibFileInput.value = '';
+
+            const genRadio = document.querySelector('input[name="bibSource"][value="generated"]');
+            if (genRadio) genRadio.checked = true;
+            toggleBibUpload('generated');
+
             globalResponseTextAll = "";
             globalUniqueDois.clear();
+            generatedBibtexString = "";
+        }
+
+
+        async function processDocxStage() {
+            const docxFileInput = document.getElementById('docxFile');
+            const processDocxButton = document.getElementById('processDocxButton');
+            
+            resetStageUI(); // Reset UI elements to initial state for this stage
+            setStatus('Processing DOCX files...');
+            processDocxButton.disabled = true;
 
             if (!docxFileInput.files || docxFileInput.files.length === 0) {
-                errorMessageElement.textContent = 'Please select at least one DOCX file.';
+                setStatus('Please select at least one DOCX file.', true);
+                processDocxButton.disabled = false;
                 return;
             }
             if (typeof mammoth === 'undefined') {
-                errorMessageElement.textContent = 'Mammoth.js library is not loaded. Please check your internet connection or the script inclusion.';
+                setStatus('Mammoth.js library is not loaded.', true);
+                processDocxButton.disabled = false;
                 return;
             }
 
@@ -265,131 +460,196 @@
             const fileProcessingPromises = docxFiles.map(docxFile => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.onload = async (event) => { // Async to await mammoth.convertToHtml
+                    reader.onload = async (event) => {
                         try {
                             const arrayBuffer = event.target.result;
                             const mammothResult = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
                             const htmlString = mammothResult.value;
-                            
                             if (mammothResult.messages && mammothResult.messages.length > 0) {
                                 console.log(`Mammoth.js messages for ${docxFile.name}:`);
                                 mammothResult.messages.forEach(msg => console.log(`  - ${msg.type}: ${msg.message}`));
                             }
-
                             const result = processConvertedHtmlContent(htmlString, docxFile.name);
                             resolve(result);
-                        } catch (e) { 
-                            console.error(`Error during DOCX conversion or processing for ${docxFile.name}:`, e);
-                            reject(new Error(`Processing failed for ${docxFile.name}: ${e.message}`));
-                        }
+                        } catch (e) { reject(e); }
                     };
-                    reader.onerror = () => {
-                        console.error(`FileReader error for ${docxFile.name}:`, reader.error);
-                        reject(new Error(`Failed to read DOCX file: ${docxFile.name}`));
-                    }
-                    reader.readAsArrayBuffer(docxFile); // Read as ArrayBuffer for Mammoth
+                    reader.onerror = () => reject(new Error(`Failed to read DOCX file: ${docxFile.name}`));
+                    reader.readAsArrayBuffer(docxFile);
                 });
             });
 
             try {
                 const conversionResults = await Promise.all(fileProcessingPromises);
-                globalResponseTextAll = conversionResults.map(r => r.processedText).join("\n\n"); 
+                globalResponseTextAll = conversionResults.map(r => r.processedText).join("\n\n");
                 conversionResults.forEach(r => { r.dois.forEach(doi => globalUniqueDois.add(doi)); });
 
-                responseTextOutput.value = globalResponseTextAll;
-                const string_DOI = Array.from(globalUniqueDois).join('\n');
-                doiStringOutput.value = string_DOI;
-                if (string_DOI.length > 0) {
-                    navigator.clipboard.writeText(string_DOI)
-                        .then(() => console.log('Aggregated DOIs copied to clipboard!'))
-                        .catch(err => console.warn('Failed to copy aggregated DOIs to clipboard:', err));
-                }
+                document.getElementById('responseTextOutput').value = globalResponseTextAll;
+                document.getElementById('doiStringOutput').value = Array.from(globalUniqueDois).join('\n');
+                document.getElementById('docxOutputSection').style.display = 'block';
+                setStatus('DOCX processing complete. Extracted DOIs.');
 
-                // --- BibTeX Processing ---
-                if (bibFileInput.files && bibFileInput.files.length > 0) {
-                    const bibFile = bibFileInput.files[0];
-                    const bibReader = new FileReader();
-                    bibReader.onload = function(bibEvent) {
-                        try {
-                            const bibtexString = bibEvent.target.result;
-                            const parsedBibData = parseBibtex(bibtexString);
-                            let messageForIndexOutput = "";
-                            
-                            if (parsedBibData.length === 0 && bibtexString.trim().length > 0) {
-                               messageForIndexOutput = "Could not parse any valid entries with DOIs from the BibTeX file.\n\n" + globalResponseTextAll;
-                            } else if (bibtexString.trim().length === 0) {
-                               messageForIndexOutput = "BibTeX file is empty.\n\n" + globalResponseTextAll;
-                            }
+                if (globalUniqueDois.size > 0) {
+                    generatedBibtexString = await generateBibtexFromDoisJs(globalUniqueDois); 
+                    document.getElementById('generatedBibtexOutput').textContent = generatedBibtexString;
+                    document.getElementById('downloadGeneratedBibButton').disabled = !generatedBibtexString.trim();
+                    
+                    const hasValidGeneratedBib = generatedBibtexString.trim() && 
+                                                 generatedBibtexString.split('\n\n').some(s => s.trim() && !s.trim().startsWith('% ERROR'));
 
-                            let responseTextIndex = globalResponseTextAll; 
-                            const citeCommand = citeCommandInput.value.trim() || "citep";
-                            let replacementsMade = 0;
-
-                            if (parsedBibData.length > 0) {
-                                Array.from(globalUniqueDois).forEach(doiFromHtm => { 
-                                    const bibKey = findBibEntryKey(doiFromHtm, parsedBibData);
-                                    if (bibKey) {
-                                        const escapedDoi = escapeRegExp(doiFromHtm);
-                                        const regexPatternToSearch = `\\[${escapedDoi}\\]`;
-                                        const replacementString = `\\${citeCommand}{${bibKey}}`;
-                                        try {
-                                            responseTextIndex = responseTextIndex.replace(new RegExp(regexPatternToSearch, 'g'), replacementString);
-                                            replacementsMade++;
-                                        } catch (e) {
-                                            console.error(`Failed to replace DOI [${doiFromHtm}] with pattern "${regexPatternToSearch}"`, e);
-                                            errorMessageElement.textContent += (errorMessageElement.textContent ? '\n' : '') + `Error during replacement for DOI: ${doiFromHtm}. Check console.`;
-                                        }
-                                    }
-                                });
-                            }
-                            
-                            if (messageForIndexOutput) {
-                                responseTextIndexOutput.value = messageForIndexOutput;
-                            } else {
-                                responseTextIndexOutput.value = responseTextIndex;
-                            }
-                            
-                            if (replacementsMade > 0) { /* Primary content is with citations */ }
-                            else if (globalUniqueDois.size > 0 && parsedBibData.length > 0 && !messageForIndexOutput) {
-                                 responseTextIndexOutput.value += (responseTextIndexOutput.value.endsWith(globalResponseTextAll) ? "\n\n" : "") + "(No matching DOIs found in BibTeX file for DOIs in content, or no citation keys for matched DOIs.)";
-                            } else if (globalUniqueDois.size === 0 && parsedBibData.length > 0 && !messageForIndexOutput) {
-                                responseTextIndexOutput.value += (responseTextIndexOutput.value.endsWith(globalResponseTextAll) ? "\n\n" : "") + "(No DOIs were extracted from the DOCX files to match against BibTeX.)";
-                            }
-                            
-                            downloadIndexButton.disabled = !responseTextIndexOutput.value.trim();
-                            if (replacementsMade > 0 && responseTextIndex.length > 0) {
-                                navigator.clipboard.writeText(responseTextIndex)
-                                    .then(() => console.log('Text with citations copied to clipboard!'))
-                                    .catch(err => console.warn('Failed to copy text with citations:', err));
-                            }
-
-                        } catch (e) {
-                            console.error("Error processing BibTeX file:", e);
-                            errorMessageElement.textContent += (errorMessageElement.textContent ? '\n' : '') + `Error processing BibTeX file: ${e.message}`;
-                            responseTextIndexOutput.value = "An error occurred during BibTeX processing.";
-                            downloadIndexButton.disabled = true;
+                    if (hasValidGeneratedBib) {
+                        document.querySelector('input[name="bibSource"][value="generated"]').checked = true;
+                        toggleBibUpload('generated');
+                    } else {
+                        document.querySelector('input[name="bibSource"][value="uploaded"]').checked = true;
+                        toggleBibUpload('uploaded');
+                        if (generatedBibtexString.trim()) { 
+                            setStatus('BibTeX generation from DOIs had issues or yielded no valid entries. Check generated BibTeX. Defaulting to custom upload.', false); // Not an error, but a warning state
+                        } else {
+                             setStatus('No DOIs found or BibTeX generation yielded no results. Please upload a .bib file for citations.', false);
                         }
-                    };
-                    bibReader.onerror = function() {
-                        errorMessageElement.textContent += (errorMessageElement.textContent ? '\n' : '') + 'Failed to read the BibTeX file.';
-                        console.error("BibTeX FileReader error");
-                        downloadIndexButton.disabled = true;
-                    };
-                    bibReader.readAsText(bibFile);
+                    }
                 } else {
-                    responseTextIndexOutput.value = "No BibTeX file selected. Aggregated processed text from DOCX (with DOIs) is available above.";
-                    downloadIndexButton.disabled = true; 
+                    setStatus('No DOIs found in the document(s). Upload a .bib file if you wish to generate LaTeX citations.', false);
+                    document.getElementById('generatedBibtexOutput').textContent = "No DOIs found to generate BibTeX.";
+                    document.querySelector('input[name="bibSource"][value="uploaded"]').checked = true; // Default to upload if no DOIs
+                    toggleBibUpload('uploaded');
                 }
+                document.getElementById('generatedBibSection').style.display = 'block';
+                document.getElementById('bibSourceChoiceSection').style.display = 'block';
+                document.getElementById('latexCiteActionSection').style.display = 'block';
+                document.getElementById('generateLatexButton').disabled = false;
 
-            } catch (error) { 
-                console.error("Error processing one or more DOCX files:", error);
-                errorMessageElement.textContent = `Error processing DOCX files: ${error.message}`;
-                responseTextOutput.value = '';
-                doiStringOutput.value = '';
-                responseTextIndexOutput.value = '';
-                downloadIndexButton.disabled = true;
+            } catch (error) {
+                setStatus(`Error during DOCX processing stage: ${error.message}`, true);
+                console.error("Error processing DOCX files:", error);
+            } finally {
+                processDocxButton.disabled = false;
             }
         }
+        
+        async function generateLatexCitationsStage() {
+            const bibSourceChoice = document.querySelector('input[name="bibSource"]:checked').value;
+            const bibFileInput = document.getElementById('bibFile');
+            const generateLatexButton = document.getElementById('generateLatexButton');
+            const downloadIndexButton = document.getElementById('downloadResponseTextIndexButton');
+            const responseTextIndexOutput = document.getElementById('responseTextIndexOutput');
+
+            setStatus('Generating LaTeX citations...');
+            generateLatexButton.disabled = true;
+            downloadIndexButton.disabled = true;
+            responseTextIndexOutput.value = ''; // Clear previous output
+            document.getElementById('latexOutputSection').style.display = 'none';
+
+
+            let bibtexDataToParse = "";
+            let usingSource = "";
+
+            if (bibSourceChoice === 'generated') {
+                usingSource = "generated BibTeX";
+                if (!generatedBibtexString.trim()) {
+                    setStatus("Generated BibTeX is empty. Cannot proceed with citation generation using this source.", true);
+                    generateLatexButton.disabled = false;
+                    return;
+                }
+                bibtexDataToParse = generatedBibtexString;
+            } else { // 'uploaded'
+                usingSource = "uploaded BibTeX";
+                if (!bibFileInput.files || bibFileInput.files.length === 0) {
+                    setStatus("Please upload a .bib file for the 'uploaded' source option.", true);
+                    generateLatexButton.disabled = false;
+                    return;
+                }
+                const bibFile = bibFileInput.files[0];
+                try {
+                    bibtexDataToParse = await bibFile.text();
+                } catch (e) {
+                    setStatus(`Error reading uploaded .bib file: ${e.message}`, true);
+                    generateLatexButton.disabled = false;
+                    return;
+                }
+                if (!bibtexDataToParse.trim()) {
+                    setStatus("Uploaded .bib file is empty.", true);
+                    generateLatexButton.disabled = false;
+                    return;
+                }
+            }
+
+            try {
+                const parsedBibData = parseBibtex(bibtexDataToParse);
+                if (parsedBibData.length === 0 && bibtexDataToParse.trim() !== "") {
+                     setStatus(`Could not parse any valid BibTeX entries from the ${usingSource}. Ensure it's correctly formatted.`, true);
+                     generateLatexButton.disabled = false;
+                     return;
+                }
+                 if (parsedBibData.length === 0) {
+                     setStatus(`The selected ${usingSource} has no usable BibTeX entries.`, false);
+                     responseTextIndexOutput.value = globalResponseTextAll + `\n\n(No BibTeX entries available from ${usingSource} to process citations.)`;
+                     document.getElementById('latexOutputSection').style.display = 'block';
+                     downloadIndexButton.disabled = !globalResponseTextAll.trim();
+                     generateLatexButton.disabled = false;
+                     return;
+                 }
+
+                let responseTextIndex = globalResponseTextAll;
+                const citeCommand = document.getElementById('citeCommandInput').value.trim() || "citep";
+                let replacementsMade = 0;
+                let localErrorMessages = [];
+
+                Array.from(globalUniqueDois).forEach(doiFromHtm => {
+                    const bibKey = findBibEntryKey(doiFromHtm, parsedBibData);
+                    if (bibKey) {
+                        const escapedDoi = escapeRegExp(doiFromHtm);
+                        const regexPatternToSearch = `\\[${escapedDoi}\\]`;
+                        const replacementString = `\\${citeCommand}{${bibKey}}`;
+                        try {
+                            responseTextIndex = responseTextIndex.replace(new RegExp(regexPatternToSearch, 'g'), replacementString);
+                            replacementsMade++;
+                        } catch (e) {
+                            console.error(`Replace error for DOI [${doiFromHtm}]`, e);
+                            localErrorMessages.push(`Error replacing DOI: ${doiFromHtm}.`);
+                        }
+                    }
+                });
+
+                if(localErrorMessages.length > 0) {
+                    const currentStatus = document.getElementById('statusMessage').textContent;
+                    setStatus( (currentStatus ? currentStatus + "\n" : "") + localErrorMessages.join("\n"), localErrorMessages.length > 0); // Show as error if any replacement errors
+                }
+
+                responseTextIndexOutput.value = responseTextIndex;
+                if (replacementsMade > 0) {
+                    setStatus(`LaTeX citation generation complete. ${replacementsMade} replacements made using ${usingSource}.`);
+                } else if (globalUniqueDois.size > 0) {
+                    setStatus(`LaTeX citation generation complete using ${usingSource}. No DOIs in the text matched entries in the BibTeX source for replacement.`);
+                     responseTextIndexOutput.value += `\n\n(No DOIs in the text matched entries in the ${usingSource}.)`;
+                } else {
+                    setStatus(`LaTeX citation generation complete using ${usingSource}. No DOIs were found in the text to replace.`);
+                     responseTextIndexOutput.value += "\n\n(No DOIs found in the text to replace.)";
+                }
+                downloadIndexButton.disabled = !responseTextIndex.trim();
+                document.getElementById('latexOutputSection').style.display = 'block';
+
+                if (replacementsMade > 0 && responseTextIndex.length > 0) {
+                    navigator.clipboard.writeText(responseTextIndex)
+                        .then(() => console.log('Text with citations copied!'))
+                        .catch(err => console.warn('Failed to copy text with citations:', err));
+                }
+
+            } catch (e) {
+                setStatus(`Error during LaTeX citation generation: ${e.message}`, true);
+                console.error("Error generating LaTeX citations:", e);
+            } finally {
+                generateLatexButton.disabled = false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            resetStageUI(); // Call reset on load to set initial state
+            const genRadio = document.querySelector('input[name="bibSource"][value="generated"]');
+            if (genRadio) genRadio.checked = true; // Should be handled by resetStageUI
+            // toggleBibUpload('generated'); // Also handled by resetStageUI
+        });
+
     </script>
 </body>
 </html>
