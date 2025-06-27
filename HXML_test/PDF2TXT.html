@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 批量转文本工具 (支持ZIP下载)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <style>
+        /* 隐藏默认的文件选择输入框 */
+        #file-input {
+            display: none;
+        }
+        /* 拖放区域高亮效果 */
+        .drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        /* 自定义滚动条样式 (可选) */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">PDF 批量转文本工具</h1>
+            <p class="text-gray-600 mt-2">在您的浏览器中安全地将 PDF 文件转换为文本文档，文件不会上传到任何服务器。</p>
+        </header>
+
+        <main>
+            <div id="upload-area" class="border-4 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer transition-colors duration-300 hover:border-blue-500 hover:bg-gray-50">
+                <input type="file" id="file-input" accept=".pdf" multiple>
+                <div class="flex flex-col items-center">
+                    <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <p class="mt-4 text-lg text-gray-600">
+                        <span class="font-semibold text-blue-600">点击此处选择文件</span> 或将 PDF 文件拖放到这里
+                    </p>
+                    <p class="mt-1 text-sm text-gray-500">支持一次性选择多个文件</p>
+                </div>
+            </div>
+
+            <div id="status-container" class="mt-6 text-center hidden">
+                <p id="status-text" class="text-lg text-gray-700"></p>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div id="download-all-container" class="text-center mt-6 hidden">
+                <button id="download-all-btn" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition-colors">
+                    一键下载全部 (ZIP)
+                </button>
+            </div>
+
+
+            <div id="output-container" class="mt-8 space-y-6">
+                </div>
+        </main>
+
+        <footer class="text-center mt-12 text-sm text-gray-500">
+            <p>&copy; 2025 - 由 AI 构建。此工具完全在您的浏览器中运行。</p>
+        </footer>
+    </div>
+
+    <script>
+        // 设置 PDF.js worker 的路径
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const statusContainer = document.getElementById('status-container');
+        const statusText = document.getElementById('status-text');
+        const progressBar = document.getElementById('progress-bar');
+        const outputContainer = document.getElementById('output-container');
+        const downloadAllContainer = document.getElementById('download-all-container');
+        const downloadAllBtn = document.getElementById('download-all-btn');
+
+        // 触发文件选择框
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // 处理文件选择
+        fileInput.addEventListener('change', (event) => {
+            const files = event.target.files;
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        });
+
+        // 处理拖放操作
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // 高亮拖放区域
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.add('drag-over'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('drag-over'), false);
+        });
+
+        // 处理拖放的文件
+        uploadArea.addEventListener('drop', (event) => {
+            const dt = event.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        });
+
+        // 核心文件处理函数
+        async function handleFiles(files) {
+            // 重置界面
+            outputContainer.innerHTML = ''; 
+            downloadAllContainer.classList.add('hidden');
+            statusContainer.classList.remove('hidden');
+            
+            let filesProcessed = 0;
+            let successfulConversions = 0;
+            const totalFiles = files.length;
+            updateProgress(0, `准备处理 ${totalFiles} 个文件...`);
+
+            for (const file of files) {
+                if (file.type !== 'application/pdf') {
+                    alert(`文件 "${file.name}" 不是 PDF 格式，已跳过。`);
+                    filesProcessed++;
+                    updateProgress(Math.round((filesProcessed / totalFiles) * 100), `正在处理下一个文件...`);
+                    continue;
+                }
+
+                updateProgress(Math.round((filesProcessed / totalFiles) * 100), `正在转换: ${file.name}`);
+                
+                try {
+                    const textContent = await extractTextFromPdf(file);
+                    createOutputCard(file.name, textContent);
+                    successfulConversions++;
+                } catch (error) {
+                    console.error('处理文件时出错:', error);
+                    createErrorCard(file.name, error.message);
+                }
+                
+                filesProcessed++;
+                updateProgress(Math.round((filesProcessed / totalFiles) * 100), `已完成 ${filesProcessed} / ${totalFiles}`);
+            }
+            
+            statusText.innerText = `全部完成！共处理了 ${totalFiles} 个文件，成功 ${successfulConversions} 个。`;
+            
+            // 如果有成功转换的文件，则显示“一键下载”按钮
+            if (successfulConversions > 0) {
+                downloadAllContainer.classList.remove('hidden');
+            }
+        }
+
+        function updateProgress(percentage, message) {
+            progressBar.style.width = `${percentage}%`;
+            statusText.innerText = message;
+        }
+        
+        // 从 PDF 文件中提取文本
+        async function extractTextFromPdf(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += pageText + '\n\n'; // 每页之间加两个换行符
+            }
+            return fullText.trim();
+        }
+
+        // 创建显示结果的卡片
+        function createOutputCard(filename, text) {
+            const cardId = `card-${Date.now()}-${Math.random()}`;
+            const card = document.createElement('div');
+            card.className = 'bg-white p-6 rounded-lg shadow-md result-card'; // 添加 'result-card' 类
+            // 将文件名和内容存储在 data 属性中，以便后续ZIP打包
+            card.dataset.filename = filename;
+            card.dataset.text = text;
+
+            card.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-gray-800 break-all">${filename}</h3>
+                    <div class="flex space-x-2">
+                        <button onclick="copyText(this)" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300 transition-colors">复制文本</button>
+                        <button onclick="downloadText(this)" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 transition-colors">下载 .txt</button>
+                    </div>
+                </div>
+                <div class="w-full h-64 bg-gray-50 p-3 rounded-md border border-gray-200 overflow-y-auto custom-scrollbar">
+                    <pre class="whitespace-pre-wrap text-sm text-gray-700">${escapeHtml(text)}</pre>
+                </div>
+            `;
+            outputContainer.appendChild(card);
+        }
+        
+        function createErrorCard(filename, errorMsg) {
+            const card = document.createElement('div');
+            card.className = 'bg-red-50 p-6 rounded-lg shadow-md border border-red-200';
+            card.innerHTML = `
+                <h3 class="text-xl font-semibold text-red-800">${filename}</h3>
+                <p class="text-red-700 mt-2">转换失败: ${errorMsg}</p>
+            `;
+            outputContainer.appendChild(card);
+        }
+
+        // 文本复制功能 (更新为更可靠的方式)
+        window.copyText = function(button) {
+            const card = button.closest('.result-card');
+            const content = card.dataset.text;
+            navigator.clipboard.writeText(content).then(() => {
+                alert('文本已成功复制到剪贴板！');
+            }, (err) => {
+                alert('无法复制文本: ', err);
+            });
+        }
+
+        // 文本下载功能 (更新为更可靠的方式)
+        window.downloadText = function(button) {
+            const card = button.closest('.result-card');
+            const filename = card.dataset.filename;
+            const content = card.dataset.text;
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            const txtFilename = filename.replace(/\.pdf$/i, '.txt');
+            link.setAttribute('download', txtFilename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // **新增**：处理一键下载 ZIP
+        downloadAllBtn.addEventListener('click', async () => {
+            const zip = new JSZip();
+            const resultCards = document.querySelectorAll('.result-card');
+            
+            if (resultCards.length === 0) {
+                alert("没有可以打包的文件。");
+                return;
+            }
+
+            resultCards.forEach(card => {
+                const originalFilename = card.dataset.filename;
+                const textContent = card.dataset.text;
+                const txtFilename = originalFilename.replace(/\.pdf$/i, '.txt');
+                zip.file(txtFilename, textContent);
+            });
+
+            // 生成 ZIP 文件并触发下载
+            try {
+                const content = await zip.generateAsync({type:"blob"});
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = 'pdf-to-txt-results.zip';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (err) {
+                console.error("创建ZIP文件失败:", err);
+                alert("创建ZIP文件失败: " + err.message);
+            }
+        });
+
+        // 防止 XSS 攻击
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
