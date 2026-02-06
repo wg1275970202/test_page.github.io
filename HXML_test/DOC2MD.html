@@ -419,7 +419,8 @@
                             const result = conversionResults[0];
                             outputFilename.textContent = result.file.name;
                             markdownOutput.textContent = result.markdown;
-                            updatePreview(result.markdown);
+                            // 使用预览版Markdown（内联Base64）进行预览，确保图片显示
+                            updatePreview(result.previewMarkdown || result.markdown);
                             
                             singleFileOutput.classList.remove('hidden');
                             multipleFilesOutput.classList.add('hidden');
@@ -546,11 +547,21 @@
                             })
                             .then(function(result) {
                                 clearInterval(progressInterval);
-                                const markdown = result.value;
-                                // 添加转换结果
+                                let markdown = result.value;
+                                
+                                // 为预览生成内联Base64版本的Markdown
+                                let previewMarkdown = markdown;
+                                // 替换相对路径为内联Base64
+                                docImages.forEach(img => {
+                                    const base64Src = `data:${img.type};base64,${img.data}`;
+                                    previewMarkdown = previewMarkdown.replace(new RegExp(img.name, 'g'), base64Src);
+                                });
+                                
+                                // 添加转换结果，包含原始Markdown（用于下载）和预览用Markdown
                                 conversionResults.push({ 
                                     file: file, 
-                                    markdown: markdown,
+                                    markdown: markdown,  // 原始Markdown，使用相对路径
+                                    previewMarkdown: previewMarkdown,  // 预览用Markdown，使用内联Base64
                                     images: docImages,
                                     imageHandling: imageHandling
                                 });
