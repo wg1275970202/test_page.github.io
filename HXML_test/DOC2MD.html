@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doc 2 Markdown 转换器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 隐藏默认的文件选择输入框 */
+        #file-input {
+            display: none;
+        }
+        /* 拖放区域高亮效果 */
+        .drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        /* 自定义滚动条样式 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">📄 Doc 2 Markdown 转换器</h1>
+            <p class="text-gray-600 mt-2">简单、快速地将 Word 和 PDF 文档转换为 Markdown 或文本格式</p>
+        </header>
+
+        <main>
+            <div id="upload-area" class="border-4 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer transition-colors duration-300 hover:border-blue-500 hover:bg-gray-50">
+                <input type="file" id="file-input" accept=".docx,.pdf" multiple />
+                <div class="flex flex-col items-center">
+                    <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <p class="mt-4 text-lg text-gray-600">
+                        <span class="font-semibold text-blue-600">点击此处选择文件</span> 或将 Word 或 PDF 文件拖放到这里
+                    </p>
+                    <p class="mt-1 text-sm text-gray-500">支持 .docx 和 .pdf 文件格式，可一次性选择多个文件</p>
+                </div>
+            </div>
+
+            <!-- 文件上传状态显示 -->
+            <div id="file-list" class="mt-6 hidden">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">已上传文件</h3>
+                <div id="files-container" class="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3 custom-scrollbar">
+                    <!-- 文件列表将在此处动态生成 -->
+                </div>
+            </div>
+
+            <div id="status-container" class="mt-6 text-center hidden">
+                <p id="status-text" class="text-lg text-gray-700"></p>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div id="download-all-container" class="text-center mt-6 hidden">
+                <button id="download-all-btn" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition-colors">
+                    一键下载全部 (ZIP)
+                </button>
+            </div>
+
+            <div class="flex space-x-2 mt-6">
+                <button id="clear-btn" class="flex-1 bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors" disabled>
+                    清空
+                </button>
+            </div>
+
+            <!-- 输出容器 -->
+            <div id="output-container" class="mt-8 space-y-6">
+                <!-- 单个文件输出卡片 -->
+                <div id="single-file-output" class="hidden">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold text-gray-800 break-all" id="output-filename"></h3>
+                            <div class="flex space-x-2">
+                                <button id="copy-btn" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300 transition-colors" disabled>
+                                    复制代码
+                                </button>
+                                <button id="download-md-btn" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 transition-colors" disabled>
+                                    下载 MD
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <h4 class="text-lg font-semibold text-gray-800 mb-2">Markdown 代码</h4>
+                            <div class="w-full h-64 bg-gray-50 p-3 rounded-md border border-gray-200 overflow-y-auto custom-scrollbar">
+                                <pre class="whitespace-pre-wrap text-sm text-gray-700" id="markdown-output"></pre>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-800 mb-2">实时预览</h4>
+                            <div id="preview-section" class="w-full h-64 bg-white p-3 rounded-md border border-gray-200 overflow-y-auto custom-scrollbar">
+                                <p class="text-gray-500">预览将显示在这里...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 多个文件输出摘要 -->
+                <div id="multiple-files-output" class="hidden">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">转换结果摘要</h3>
+                        <div id="multiple-files-summary" class="mb-4">
+                            <!-- 多个文件摘要将在此处动态生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center mt-12 text-sm text-gray-500">
+            <p>&copy; 2026 - Doc 2 Markdown 转换器 | 基于浏览器的前端工具</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist/build/pdf.min.js"></script>
+    <script>
+        // 设置 pdf.js 的 worker 路径
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist/build/pdf.worker.min.js';
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+            const clearBtn = document.getElementById('clear-btn');
+            const copyBtn = document.getElementById('copy-btn');
+            const downloadMdBtn = document.getElementById('download-md-btn');
+            const markdownOutput = document.getElementById('markdown-output');
+            const previewSection = document.getElementById('preview-section');
+            const statusContainer = document.getElementById('status-container');
+            const statusText = document.getElementById('status-text');
+            const progressBar = document.getElementById('progress-bar');
+            const fileList = document.getElementById('file-list');
+            const filesContainer = document.getElementById('files-container');
+            const downloadAllContainer = document.getElementById('download-all-container');
+            const downloadAllBtn = document.getElementById('download-all-btn');
+            const outputContainer = document.getElementById('output-container');
+            const singleFileOutput = document.getElementById('single-file-output');
+            const multipleFilesOutput = document.getElementById('multiple-files-output');
+            const outputFilename = document.getElementById('output-filename');
+            const multipleFilesSummary = document.getElementById('multiple-files-summary');
+
+            let selectedFiles = [];
+            let conversionResults = [];
+
+            /**
+             * 显示状态信息
+             * @param {string} message - 状态消息
+             * @param {string} type - 状态类型：success, error, info
+             */
+            function showStatus(message, type = 'info') {
+                statusText.textContent = message;
+                statusContainer.classList.remove('hidden');
+                
+                // 根据状态类型设置不同的样式
+                if (type === 'error') {
+                    statusText.classList.add('text-red-600');
+                    statusText.classList.remove('text-green-600', 'text-blue-600');
+                } else if (type === 'success') {
+                    statusText.classList.add('text-green-600');
+                    statusText.classList.remove('text-red-600', 'text-blue-600');
+                } else {
+                    statusText.classList.add('text-blue-600');
+                    statusText.classList.remove('text-red-600', 'text-green-600');
+                }
+            }
+
+            /**
+             * 更新进度条和状态信息
+             * @param {number} percentage - 进度百分比
+             * @param {string} message - 状态消息
+             */
+            function updateProgress(percentage, message) {
+                progressBar.style.width = `${percentage}%`;
+                statusText.textContent = message;
+                statusContainer.classList.remove('hidden');
+                
+                // 重置状态文本样式
+                statusText.classList.remove('text-red-600', 'text-green-600', 'text-blue-600');
+            }
+
+            function updatePreview(markdown) {
+                try {
+                    // 使用 marked.js 在本地解析 Markdown
+                    const html = marked.parse(markdown);
+                    previewSection.innerHTML = html;
+                } catch (error) {
+                    // 解析失败时的处理
+                    previewSection.innerHTML = `
+                        <div class="p-4 text-center text-gray-600">
+                            <div class="text-3xl mb-2">⚠️</div>
+                            <h3 class="text-lg font-semibold mb-1">预览生成失败</h3>
+                            <p class="mb-3">解析 Markdown 时出现错误</p>
+                            <p class="text-sm">请检查 Markdown 格式或下载文件后在本地编辑器中查看</p>
+                        </div>
+                    `;
+                }
+            }
+
+            // 将Markdown转换为纯文本
+            function markdownToPlainText(markdown) {
+                return markdown
+                    .replace(/^#\s+(.+)$/gm, '$1') // 移除标题标记
+                    .replace(/^##\s+(.+)$/gm, '$1')
+                    .replace(/^###\s+(.+)$/gm, '$1')
+                    .replace(/\*\*(.+?)\*\*/g, '$1') // 移除粗体
+                    .replace(/\*(.+?)\*/g, '$1') // 移除斜体
+                    .replace(/\[(.*?)\]\((.*?)\)/g, '$1') // 移除链接标记
+                    .replace(/!\[(.*?)\]\((.*?)\)/g, '') // 移除图片标记
+                    .replace(/```[\s\S]*?```/g, '') // 移除代码块
+                    .replace(/`(.+?)`/g, '$1') // 移除行内代码
+                    .replace(/^-\s+(.+)$/gm, '$1') // 移除列表标记
+                    .replace(/^\d+\.\s+(.+)$/gm, '$1') // 移除有序列表标记
+                    .replace(/^>\s+(.+)$/gm, '$1') // 移除引用标记
+                    .replace(/\n{3,}/g, '\n\n'); // 合并多个空行
+            }
+
+            /**
+             * 生成唯一的文件名，添加原始扩展名作为区分
+             * @param {File} file - 原始文件
+             * @param {string} extension - 目标文件扩展名
+             * @returns {string} - 唯一的文件名
+             */
+            function generateUniqueFileName(file, extension) {
+                const isPDF = file.name.endsWith('.pdf');
+                const isDocx = file.name.endsWith('.docx');
+                
+                if (isPDF) {
+                    return file.name.replace('.pdf', '_pdf.' + extension);
+                } else if (isDocx) {
+                    return file.name.replace('.docx', '_docx.' + extension);
+                } else {
+                    return file.name + '.' + extension;
+                }
+            }
+
+            /**
+             * 处理选中的文件
+             * @param {FileList} files - 选中的文件列表
+             */
+            function handleFiles(files) {
+                // 验证文件数量
+                if (files.length === 0) {
+                    showStatus('请选择至少一个文件', 'error');
+                    return;
+                }
+                
+                // 验证文件大小和类型
+                const validFiles = [];
+                const invalidFiles = [];
+                
+                Array.from(files).forEach(file => {
+                    // 验证文件类型
+                    if (!file.name.endsWith('.docx') && !file.name.endsWith('.pdf')) {
+                        invalidFiles.push(`${file.name} (不支持的文件类型)`);
+                        return;
+                    }
+                    
+                    // 验证文件大小（最大10MB）
+                    const maxSize = 10 * 1024 * 1024; // 10MB
+                    if (file.size > maxSize) {
+                        invalidFiles.push(`${file.name} (文件过大，最大支持10MB)`);
+                        return;
+                    }
+                    
+                    validFiles.push(file);
+                });
+                
+                // 显示无效文件信息
+                if (invalidFiles.length > 0) {
+                    const errorMessage = `以下文件无法处理:\n${invalidFiles.join('\n')}`;
+                    showStatus(errorMessage, 'error');
+                }
+                
+                // 处理有效文件
+                if (validFiles.length > 0) {
+                    selectedFiles = validFiles;
+                    clearBtn.disabled = selectedFiles.length === 0;
+                    
+                    // 显示文件列表
+                    filesContainer.innerHTML = '';
+                    
+                    selectedFiles.forEach((file, index) => {
+                        const fileItem = document.createElement('div');
+                        fileItem.className = 'flex justify-between items-center py-2 border-b border-gray-100';
+                        
+                        const fileName = document.createElement('span');
+                        fileName.className = 'text-sm';
+                        fileName.textContent = `${index + 1}. ${file.name}`;
+                        
+                        const fileSize = document.createElement('span');
+                        const sizeInKB = (file.size / 1024).toFixed(1);
+                        fileSize.className = 'text-xs text-gray-500';
+                        fileSize.textContent = `${sizeInKB} KB`;
+                        
+                        fileItem.appendChild(fileName);
+                        fileItem.appendChild(fileSize);
+                        filesContainer.appendChild(fileItem);
+                    });
+                    
+                    // 显示文件列表
+                    fileList.classList.remove('hidden');
+                    
+                    // 显示处理信息
+                    showStatus(`准备处理 ${validFiles.length} 个文件`, 'info');
+                    
+                    // 自动开始转换
+                    autoConvert();
+                } else {
+                    // 隐藏文件列表
+                    fileList.classList.add('hidden');
+                    clearBtn.disabled = true;
+                }
+            }
+
+            // 从 PDF 文件中提取文本
+            async function extractTextFromPdf(file) {
+                try {
+                    // 读取文件为ArrayBuffer
+                    const arrayBuffer = await readFileAsArrayBuffer(file);
+                    
+                    // 加载PDF文档
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    
+                    // 准备存储每页文本的数组
+                    const pagesText = [];
+                    
+                    // 并行处理所有页面
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        // 获取页面
+                        const page = await pdf.getPage(i);
+                        
+                        // 获取页面文本内容
+                        const textContent = await page.getTextContent();
+                        
+                        // 提取文本并添加到数组
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        pagesText.push(pageText);
+                    }
+                    
+                    // 组合所有页面文本，每页之间添加两个换行符
+                    let fullText = `# ${file.name}\n\n`;
+                    fullText += pagesText.join('\n\n');
+                    
+                    return fullText.trim();
+                } catch (error) {
+                    console.error('PDF转换失败:', error);
+                    throw new Error(`PDF转换失败: ${error.message || '未知错误'}`);
+                }
+            }
+
+            // 辅助函数：将文件读取为ArrayBuffer
+            function readFileAsArrayBuffer(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        resolve(e.target.result);
+                    };
+                    reader.onerror = function() {
+                        reject(new Error('文件读取失败'));
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            /**
+             * 自动转换函数
+             * 串行处理所有选中的文件，显示转换进度，并根据文件类型选择相应的转换方法
+             */
+            function autoConvert() {
+                // 如果没有选中文件，直接返回
+                if (selectedFiles.length === 0) return;
+
+                // 显示状态容器，初始化进度
+                statusContainer.classList.remove('hidden');
+                updateProgress(0, `准备处理 ${selectedFiles.length} 个文件...`);
+                
+                // 清空之前的转换结果
+                conversionResults = [];
+
+                // 隐藏输出容器，准备显示新的结果
+                singleFileOutput.classList.add('hidden');
+                multipleFilesOutput.classList.add('hidden');
+
+                // 初始化计数器
+                let completedFiles = 0;
+                const totalFiles = selectedFiles.length;
+                let currentFileIndex = 0;
+
+                /**
+                 * 处理单个文件的函数
+                 * 递归调用，处理完一个文件后自动处理下一个
+                 */
+                function processNextFile() {
+                    // 所有文件处理完成
+                    if (currentFileIndex >= totalFiles) {
+                        // 隐藏状态容器
+                        statusContainer.classList.add('hidden');
+                        
+                        // 根据文件数量显示不同的结果界面
+                        if (totalFiles === 1) {
+                            // 单个文件时显示详细结果卡片
+                            const result = conversionResults[0];
+                            outputFilename.textContent = result.file.name;
+                            markdownOutput.textContent = result.markdown;
+                            updatePreview(result.markdown);
+                            
+                            singleFileOutput.classList.remove('hidden');
+                            multipleFilesOutput.classList.add('hidden');
+                            downloadAllContainer.classList.add('hidden');
+                            
+                            // 启用下载按钮
+                            copyBtn.disabled = false;
+                            downloadMdBtn.disabled = false;
+                            showStatus('转换成功！', 'success');
+                        } else {
+                            // 多个文件时显示摘要
+                            multipleFilesSummary.innerHTML = `
+                                <p class="mb-2">已成功转换 ${conversionResults.length} 个文件</p>
+                                <ul class="list-disc pl-5">
+                                    ${conversionResults.map(r => `<li>${r.file.name} (${r.images.length} 张图片)</li>`).join('')}
+                                </ul>
+                            `;
+                            
+                            multipleFilesOutput.classList.remove('hidden');
+                            singleFileOutput.classList.add('hidden');
+                            downloadAllContainer.classList.remove('hidden');
+                            
+                            // 禁用单个文件的下载按钮
+                            copyBtn.disabled = true;
+                            downloadMdBtn.disabled = true;
+                            
+                            showStatus(`已成功转换 ${conversionResults.length} 个文件！`, 'success');
+                        }
+
+                        // 启用清空按钮
+                        clearBtn.disabled = false;
+                        return;
+                    }
+
+                    // 获取当前要处理的文件
+                    const file = selectedFiles[currentFileIndex];
+                    const isPDF = file.name.endsWith('.pdf');
+                    const reader = new FileReader();
+
+                    // 计算当前文件的进度范围
+                    const startProgress = Math.round((currentFileIndex / totalFiles) * 100);
+                    const endProgress = Math.round(((currentFileIndex + 1) / totalFiles) * 100);
+
+                    // 模拟转换进度的函数
+                    let progressInterval;
+                    function simulateProgress() {
+                        let simulatedProgress = 0;
+                        progressInterval = setInterval(() => {
+                            simulatedProgress += 5;
+                            if (simulatedProgress > 95) {
+                                clearInterval(progressInterval);
+                                return;
+                            }
+                            const currentProgress = Math.round(startProgress + (simulatedProgress / 100) * (endProgress - startProgress));
+                            updateProgress(currentProgress, `正在转换: ${file.name}`);
+                        }, 200);
+                    }
+
+                    // 文件读取进度回调
+                    reader.onprogress = function(e) {
+                        if (e.lengthComputable) {
+                            const fileProgress = Math.round((e.loaded / e.total) * 50); // 读取进度占50%
+                            const currentProgress = Math.round(startProgress + (fileProgress / 100) * (endProgress - startProgress));
+                            updateProgress(currentProgress, `正在读取: ${file.name}`);
+                        }
+                    };
+
+                    // 文件读取完成回调
+                    reader.onload = function(e) {
+                        // 开始模拟转换进度
+                        simulateProgress();
+
+                        if (isPDF) {
+                            // 处理 PDF 文件
+                            extractTextFromPdf(file)
+                                .then(function(textContent) {
+                                    clearInterval(progressInterval);
+                                    // 添加转换结果
+                                    conversionResults.push({ 
+                                        file: file, 
+                                        markdown: textContent,
+                                        images: [],
+                                        imageHandling: 'relative'
+                                    });
+                                    completedFiles++;
+                                    currentFileIndex++;
+                                    updateProgress(endProgress, `已完成: ${file.name}`);
+                                    // 短暂延迟，让用户看到进度完成
+                                    setTimeout(processNextFile, 300);
+                                })
+                                .catch(function(error) {
+                                    clearInterval(progressInterval);
+                                    console.error('PDF 转换失败:', error);
+                                    completedFiles++;
+                                    currentFileIndex++;
+                                    updateProgress(endProgress, `转换失败: ${file.name}`);
+                                    // 短暂延迟，让用户看到进度完成
+                                    setTimeout(processNextFile, 300);
+                                });
+                        } else {
+                            // 处理 Word 文件
+                            const docImages = [];
+                            
+                            // 默认使用相对路径引用
+                            const imageHandling = 'relative';
+                            
+                            mammoth.convertToMarkdown({ arrayBuffer: e.target.result }, {
+                                convertImage: mammoth.images.imgElement(function(image) {
+                                    return image.read("base64").then(function(imageBuffer) {
+                                        // 获取原始文件名（不含扩展名）
+                                        const originalFileName = file.name.replace(/\.[^/.]+$/, "");
+                                        // 清理文件名，移除可能导致问题的字符
+                                        const safeFileName = originalFileName.replace(/[^a-zA-Z0-9-_]/g, "_");
+                                        // 相对路径引用，添加原始文件名前缀
+                                        const fileName = `images/${safeFileName}_${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${image.contentType.split("/")[1]}`;
+                                        docImages.push({
+                                            name: fileName,
+                                            data: imageBuffer,
+                                            type: image.contentType
+                                        });
+                                        return { src: fileName };
+                                    });
+                                })
+                            })
+                            .then(function(result) {
+                                clearInterval(progressInterval);
+                                const markdown = result.value;
+                                // 添加转换结果
+                                conversionResults.push({ 
+                                    file: file, 
+                                    markdown: markdown,
+                                    images: docImages,
+                                    imageHandling: imageHandling
+                                });
+                                completedFiles++;
+                                currentFileIndex++;
+                                updateProgress(endProgress, `已完成: ${file.name}`);
+                                // 短暂延迟，让用户看到进度完成
+                                setTimeout(processNextFile, 300);
+                            })
+                            .catch(function(error) {
+                                clearInterval(progressInterval);
+                                console.error('Word 转换失败:', error);
+                                completedFiles++;
+                                currentFileIndex++;
+                                updateProgress(endProgress, `转换失败: ${file.name}`);
+                                // 短暂延迟，让用户看到进度完成
+                                setTimeout(processNextFile, 300);
+                            });
+                        }
+                    };
+
+                    // 文件读取错误回调
+                    reader.onerror = function() {
+                        clearInterval(progressInterval);
+                        completedFiles++;
+                        currentFileIndex++;
+                        updateProgress(endProgress, `读取失败: ${file.name}`);
+                        // 短暂延迟，让用户看到进度完成
+                        setTimeout(processNextFile, 300);
+                    };
+
+                    // 开始读取文件
+                    reader.readAsArrayBuffer(file);
+                }
+
+                // 开始处理第一个文件
+                processNextFile();
+            }
+
+            /**
+             * 处理拖放事件的默认行为
+             * @param {Event} e - 拖放事件
+             */
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            // 点击上传区域触发文件选择
+            uploadArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // 处理文件选择
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    handleFiles(e.target.files);
+                }
+            });
+
+            // 处理拖放操作
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            // 高亮拖放区域
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, () => uploadArea.classList.add('drag-over'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('drag-over'), false);
+            });
+
+            // 处理拖放的文件
+            uploadArea.addEventListener('drop', function(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    handleFiles(files);
+                }
+            });
+
+            clearBtn.addEventListener('click', function() {
+                selectedFiles = [];
+                conversionResults = [];
+                fileInput.value = '';
+                
+                // 隐藏文件列表、状态容器和一键下载全部按钮
+                fileList.classList.add('hidden');
+                statusContainer.classList.add('hidden');
+                downloadAllContainer.classList.add('hidden');
+                
+                // 隐藏输出容器
+                singleFileOutput.classList.add('hidden');
+                multipleFilesOutput.classList.add('hidden');
+                
+                clearBtn.disabled = true;
+                copyBtn.disabled = true;
+                downloadMdBtn.disabled = true;
+                
+                showStatus('已清空', 'success');
+            });
+
+            copyBtn.addEventListener('click', function() {
+                const textToCopy = markdownOutput.textContent;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showStatus('已复制到剪贴板', 'success');
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    showStatus('复制失败', 'error');
+                });
+            });
+
+            // 下载 MD 文件
+            downloadMdBtn.addEventListener('click', function() {
+                if (conversionResults.length === 0) return;
+
+                const result = conversionResults[0];
+                const hasImages = result.images && result.images.length > 0;
+                const usesRelativePaths = result.imageHandling === 'relative';
+                
+                // 生成唯一的文件名，添加原始扩展名作为区分
+                const mdFileName = generateUniqueFileName(result.file, 'md');
+                const zipFileName = generateUniqueFileName(result.file, 'zip');
+                
+                if (hasImages && usesRelativePaths) {
+                    // 单个文件、包含图片且使用相对路径时生成ZIP
+                    const zip = new JSZip();
+                    zip.file(mdFileName, result.markdown);
+                    
+                    // 添加图片文件
+                    result.images.forEach(img => {
+                        zip.file(img.name, img.data, { base64: true });
+                    });
+                    
+                    zip.generateAsync({ type: 'blob' })
+                        .then(function(blob) {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = zipFileName;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            showStatus('已下载包含图片的 zip 文件', 'success');
+                        })
+                        .catch(function(error) {
+                            console.error('生成zip失败:', error);
+                            showStatus('生成zip文件失败', 'error');
+                        });
+                } else {
+                    // 单个文件、无图片时直接下载
+                    const blob = new Blob([result.markdown], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = mdFileName;
+                    a.click();
+                    
+                    URL.revokeObjectURL(url);
+                    showStatus('已下载 MD 文件', 'success');
+                }
+            });
+
+
+
+            // 一键下载全部按钮点击事件
+            downloadAllBtn.addEventListener('click', function() {
+                if (conversionResults.length === 0) return;
+
+                // 生成包含所有文件的ZIP
+                const zip = new JSZip();
+                
+                conversionResults.forEach(result => {
+                    // 生成唯一的文件名，添加原始扩展名作为区分
+                    const mdFileName = generateUniqueFileName(result.file, 'md');
+                    
+                    zip.file(mdFileName, result.markdown);
+                    
+                    // 添加图片文件
+                    if (result.images && result.images.length > 0) {
+                        result.images.forEach(img => {
+                            zip.file(img.name, img.data, { base64: true });
+                        });
+                    }
+                });
+                
+                zip.generateAsync({ type: 'blob' })
+                    .then(function(blob) {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'converted-files.zip';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        showStatus('已下载 zip 文件', 'success');
+                    })
+                    .catch(function(error) {
+                        console.error('生成zip失败:', error);
+                        showStatus('生成zip文件失败', 'error');
+                    });
+            });
+        });
+    </script>
+</body>
+</html>
