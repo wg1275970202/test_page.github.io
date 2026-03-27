@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多格式文件转 Markdown</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.2/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.2.0/turndown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/music-metadata-browser@2.5.10/dist/music-metadata-browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <style>
+    :root {
+      --bg-1: #f7f4ea;
+      --bg-2: #f2dfc8;
+      --ink: #172026;
+      --accent: #d45d1f;
+      --accent-2: #127475;
+      --panel: rgba(255, 255, 255, 0.86);
+      --line: rgba(23, 32, 38, 0.12);
+      --shadow: 0 24px 60px rgba(23, 32, 38, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: "Noto Sans SC", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% 10%, rgba(18, 116, 117, 0.22), transparent 50%),
+        radial-gradient(900px 500px at 95% 85%, rgba(212, 93, 31, 0.2), transparent 45%),
+        linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      padding: 28px;
+    }
+
+    .shell {
+      max-width: 1240px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      font-family: "Space Grotesk", "Noto Sans SC", sans-serif;
+      font-size: clamp(1.6rem, 3.2vw, 2.7rem);
+      line-height: 1.1;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: rgba(23, 32, 38, 0.78);
+      font-size: 0.95rem;
+    }
+
+    .badge {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.6);
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    .panel-wrap {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .left {
+      padding: 18px;
+    }
+
+    .drop {
+      border: 2px dashed rgba(23, 32, 38, 0.25);
+      background: linear-gradient(165deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.45));
+      border-radius: 16px;
+      min-height: 210px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.2s ease;
+      padding: 18px;
+    }
+
+    .drop:hover,
+    .drop.drag {
+      transform: translateY(-2px);
+      border-color: var(--accent-2);
+      box-shadow: 0 14px 30px rgba(18, 116, 117, 0.2);
+    }
+
+    .drop h3 {
+      font-family: "Space Grotesk", "Noto Sans SC", sans-serif;
+      font-size: 1.15rem;
+      margin-bottom: 8px;
+    }
+
+    .drop p {
+      font-size: 0.9rem;
+      color: rgba(23, 32, 38, 0.75);
+      line-height: 1.55;
+    }
+
+    .file {
+      margin-top: 14px;
+      font-size: 0.9rem;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(18, 116, 117, 0.09);
+      border: 1px solid rgba(18, 116, 117, 0.22);
+      display: none;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 12px;
+      font-weight: 600;
+      font-family: "Space Grotesk", "Noto Sans SC", sans-serif;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #e38a34);
+      color: #fff;
+    }
+
+    .primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 9px 24px rgba(212, 93, 31, 0.32);
+    }
+
+    .ghost {
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+
+    .ghost:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: rgba(23, 32, 38, 0.28);
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: rgba(23, 32, 38, 0.7);
+      line-height: 1.5;
+    }
+
+    .field {
+      margin-top: 12px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 0.8rem;
+      color: rgba(23, 32, 38, 0.8);
+    }
+
+    .field select {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 0.9rem;
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--ink);
+    }
+
+    .switches {
+      margin-top: 10px;
+      display: grid;
+      gap: 8px;
+      font-size: 0.86rem;
+      color: rgba(23, 32, 38, 0.86);
+    }
+
+    .switches label {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .url-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .url-row input {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 11px;
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--ink);
+      font-size: 0.9rem;
+    }
+
+    .right {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 70vh;
+    }
+
+    .toolbar {
+      border-bottom: 1px solid var(--line);
+      padding: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.65);
+    }
+
+    .status {
+      font-size: 0.88rem;
+      color: rgba(23, 32, 38, 0.84);
+      min-height: 20px;
+    }
+
+    .tabs {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .tab {
+      padding: 6px 12px;
+      border: 0;
+      background: transparent;
+      font-size: 0.82rem;
+    }
+
+    .tab.active {
+      background: var(--accent-2);
+      color: #fff;
+    }
+
+    .output {
+      display: grid;
+      min-height: 0;
+    }
+
+    .pane {
+      display: none;
+      padding: 18px;
+      height: 100%;
+      overflow: auto;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .pane.active {
+      display: block;
+    }
+
+    #mdCode {
+      font-family: Consolas, "Courier New", monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #mdPreview h1,
+    #mdPreview h2,
+    #mdPreview h3 {
+      margin: 16px 0 8px;
+      font-family: "Space Grotesk", "Noto Sans SC", sans-serif;
+    }
+
+    #mdPreview p,
+    #mdPreview ul,
+    #mdPreview ol {
+      margin-bottom: 10px;
+    }
+
+    .danger {
+      color: #8f1f1f;
+      background: rgba(220, 38, 38, 0.12);
+      border: 1px solid rgba(220, 38, 38, 0.28);
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-top: 12px;
+      display: none;
+      font-size: 0.86rem;
+    }
+
+    @media (max-width: 980px) {
+      body {
+        padding: 16px;
+      }
+
+      .panel-wrap {
+        grid-template-columns: 1fr;
+      }
+
+      .right {
+        min-height: 60vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <h1 class="title">多格式文件转 Markdown</h1>
+        <p class="subtitle">纯前端实现，支持单文件与 ZIP 递归处理，文件仅在浏览器本地处理。</p>
+      </div>
+      <div class="badge">支持 PDF / PPTX / DOCX / XLSX / EPUB / ZIP / URL</div>
+    </section>
+
+    <section class="panel-wrap">
+      <aside class="panel left">
+        <input id="fileInput" type="file" accept=".pdf,.pptx,.doc,.docx,.xls,.xlsx,.epub,.txt,.md,.json,.csv,.tsv,.html,.htm,.xml,.yml,.yaml,.js,.jsx,.ts,.tsx,.py,.java,.c,.cpp,.h,.hpp,.go,.rs,.sh,.bat,.ps1,.sql,.log,.ini,.toml,.png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,.mp3,.wav,.m4a,.aac,.ogg,.flac,.zip" hidden>
+        <div id="dropZone" class="drop">
+          <div>
+            <h3>拖拽文件到这里</h3>
+            <p>或点击选择文件（支持 ZIP 递归转换）</p>
+          </div>
+        </div>
+
+        <div id="fileInfo" class="file"></div>
+
+        <div class="actions">
+          <button id="convertBtn" class="primary" disabled>开始转换</button>
+          <button id="clearBtn" class="ghost">清空</button>
+          <button id="copyBtn" class="ghost" disabled>复制 Markdown</button>
+          <button id="downloadMdBtn" class="ghost" disabled>下载 MD</button>
+          <button id="downloadBtn" class="ghost" disabled>下载 ZIP</button>
+        </div>
+
+        <div class="field">
+          <label for="imageMode">图片处理模式</label>
+          <select id="imageMode">
+            <option value="inline">内联引用路径（推荐）</option>
+            <option value="base64">Base64 嵌入</option>
+          </select>
+        </div>
+
+        <div class="switches">
+          <label><input id="enableImageOcr" type="checkbox"> 图片启用 OCR（较慢）</label>
+          <label><input id="enableAudioTx" type="checkbox"> 音频启用转写（实验功能）</label>
+        </div>
+
+        <div class="url-row">
+          <input id="youtubeInput" type="text" placeholder="粘贴 YouTube URL 直接转换">
+          <button id="youtubeBtn" class="ghost" type="button">转换 URL</button>
+        </div>
+
+        <div class="hint">
+          说明：支持 PDF/PPTX/DOCX/XLSX/EPUB/图片/音频/HTML/CSV/JSON/XML/ZIP。ZIP 会递归转换并保留目录结构导出。YouTube URL 可提取基础信息，字幕受来源可用性影响。
+        </div>
+
+        <div id="errorBox" class="danger"></div>
+      </aside>
+
+      <section class="panel right">
+        <div class="toolbar">
+          <div id="status" class="status">等待上传文件...</div>
+          <div class="tabs">
+            <button class="tab active" data-tab="code">Markdown</button>
+            <button class="tab" data-tab="preview">预览</button>
+          </div>
+        </div>
+
+        <div class="output">
+          <pre id="mdCode" class="pane active"># 输出区
+
+上传文件后会在这里显示 Markdown。</pre>
+          <article id="mdPreview" class="pane"></article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    const convertBtn = document.getElementById("convertBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const downloadMdBtn = document.getElementById("downloadMdBtn");
+    const fileInfo = document.getElementById("fileInfo");
+    const statusEl = document.getElementById("status");
+    const errorBox = document.getElementById("errorBox");
+    const imageMode = document.getElementById("imageMode");
+    const enableImageOcr = document.getElementById("enableImageOcr");
+    const enableAudioTx = document.getElementById("enableAudioTx");
+    const youtubeInput = document.getElementById("youtubeInput");
+    const youtubeBtn = document.getElementById("youtubeBtn");
+    const mdCode = document.getElementById("mdCode");
+    const mdPreview = document.getElementById("mdPreview");
+    const turndownService = new TurndownService({
+      headingStyle: "atx",
+      bulletListMarker: "-",
+      codeBlockStyle: "fenced"
+    });
+
+    const SUPPORTED_EXTS = new Set([
+      "pdf", "pptx", "doc", "docx", "xls", "xlsx", "epub", "txt", "md", "markdown", "json", "csv", "tsv", "html", "htm", "xml", "yml", "yaml",
+      "js", "jsx", "ts", "tsx", "py", "java", "c", "cpp", "h", "hpp", "go", "rs", "sh", "bat", "ps1", "sql",
+      "log", "ini", "toml", "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "mp3", "wav", "m4a", "aac", "ogg", "flac", "zip"
+    ]);
+
+    const TEXT_EXTS = new Set([
+      "txt", "md", "markdown", "json", "csv", "tsv", "html", "htm", "xml", "yml", "yaml",
+      "js", "jsx", "ts", "tsx", "py", "java", "c", "cpp", "h", "hpp", "go", "rs", "sh", "bat", "ps1", "sql",
+      "log", "ini", "toml"
+    ]);
+
+    const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"]);
+    const AUDIO_EXTS = new Set(["mp3", "wav", "m4a", "aac", "ogg", "flac"]);
+
+    let currentFile = null;
+    let markdownText = "";
+    let outputFiles = [];
+    let asrPipeline = null;
+    const ZIP_CONCURRENCY = 3;
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function showError(message) {
+      errorBox.style.display = "block";
+      errorBox.textContent = message;
+    }
+
+    function clearError() {
+      errorBox.style.display = "none";
+      errorBox.textContent = "";
+    }
+
+    function bytesToSize(bytes) {
+      if (!bytes) return "0 B";
+      const units = ["B", "KB", "MB", "GB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return (bytes / Math.pow(1024, i)).toFixed(2) + " " + units[i];
+    }
+
+    function getExt(name) {
+      const parts = name.split(".");
+      if (parts.length < 2) return "";
+      return parts.pop().toLowerCase();
+    }
+
+    function getLanguageByExt(ext) {
+      const map = {
+        js: "javascript",
+        jsx: "javascript",
+        ts: "typescript",
+        tsx: "typescript",
+        py: "python",
+        java: "java",
+        c: "c",
+        cpp: "cpp",
+        h: "c",
+        hpp: "cpp",
+        go: "go",
+        rs: "rust",
+        sh: "bash",
+        bat: "bat",
+        ps1: "powershell",
+        sql: "sql",
+        yml: "yaml",
+        yaml: "yaml",
+        xml: "xml",
+        html: "html",
+        htm: "html",
+        json: "json",
+        csv: "csv",
+        tsv: "tsv",
+        md: "markdown",
+        markdown: "markdown",
+        txt: "text",
+        log: "text",
+        ini: "ini",
+        toml: "toml"
+      };
+      return map[ext] || "text";
+    }
+
+    function getMimeByExt(ext) {
+      const map = {
+        png: "image/png",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        gif: "image/gif",
+        webp: "image/webp",
+        bmp: "image/bmp",
+        svg: "image/svg+xml"
+      };
+      return map[ext] || "application/octet-stream";
+    }
+
+    function toBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      const chunkSize = 0x8000;
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+      }
+      return btoa(binary);
+    }
+
+    function fileNameOnly(path) {
+      return path.split(/[\\/]/).pop();
+    }
+
+    function extractYoutubeVideoId(url) {
+      const yt = /(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/;
+      const m = String(url || "").match(yt);
+      return m ? m[1] : "";
+    }
+
+    function sanitizeMdText(text) {
+      return String(text || "").replace(/\r\n/g, "\n").trim();
+    }
+
+    function normalizePosixPath(path) {
+      return String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
+    }
+
+    function dirOf(path) {
+      const normalized = normalizePosixPath(path);
+      const idx = normalized.lastIndexOf("/");
+      return idx >= 0 ? normalized.slice(0, idx + 1) : "";
+    }
+
+    function extFromMime(contentType) {
+      const map = {
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/gif": "gif",
+        "image/webp": "webp",
+        "image/bmp": "bmp",
+        "image/svg+xml": "svg"
+      };
+      return map[String(contentType || "").toLowerCase()] || "bin";
+    }
+
+    function safeName(name) {
+      return String(name || "file").replace(/[^a-zA-Z0-9._-]+/g, "_");
+    }
+
+    function baseNameNoExt(path) {
+      return fileNameOnly(path).replace(/\.[^/.]+$/, "");
+    }
+
+    function buildImageOutPath(sourcePath, imageName) {
+      const dir = dirOf(sourcePath);
+      const file = safeName(fileNameOnly(imageName));
+      return normalizePosixPath(dir + "_image/" + file);
+    }
+
+    function relativeLinkFromMd(mdPath, targetPath) {
+      const mdDir = dirOf(mdPath).split("/").filter(Boolean);
+      const target = normalizePosixPath(targetPath).split("/").filter(Boolean);
+      while (mdDir.length && target.length && mdDir[0] === target[0]) {
+        mdDir.shift();
+        target.shift();
+      }
+      const up = Array.from({ length: mdDir.length }, () => "..");
+      const rel = up.concat(target).join("/") || ".";
+      return rel.startsWith(".") ? rel : "./" + rel;
+    }
+
+    function base64ToBlob(base64, mime) {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new Blob([bytes], { type: mime || "application/octet-stream" });
+    }
+
+    async function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("读取二进制数据失败"));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function ensureUniquePath(path, usedSet) {
+      const normalized = normalizePosixPath(path);
+      if (!usedSet.has(normalized)) {
+        usedSet.add(normalized);
+        return normalized;
+      }
+
+      const idx = normalized.lastIndexOf(".");
+      const base = idx > 0 ? normalized.slice(0, idx) : normalized;
+      const ext = idx > 0 ? normalized.slice(idx) : "";
+      let n = 2;
+      while (usedSet.has(base + "_" + n + ext)) {
+        n += 1;
+      }
+      const finalPath = base + "_" + n + ext;
+      usedSet.add(finalPath);
+      return finalPath;
+    }
+
+    async function convertPptxToMd(sourcePath, blob, options) {
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const slides = Object.keys(zip.files)
+        .filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+        .sort((a, b) => {
+          const ai = Number(a.match(/slide(\d+)\.xml/i)[1]);
+          const bi = Number(b.match(/slide(\d+)\.xml/i)[1]);
+          return ai - bi;
+        });
+
+      const chunks = [];
+      for (let i = 0; i < slides.length; i++) {
+        const xml = await zip.files[slides[i]].async("text");
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xml, "application/xml");
+        const texts = Array.from(doc.getElementsByTagName("a:t")).map((n) => n.textContent || "").filter(Boolean);
+        chunks.push("## 幻灯片 " + (i + 1) + "\n\n" + sanitizeMdText(texts.join("\n\n")));
+      }
+
+      const assets = [];
+      const imageRefs = [];
+      const media = Object.keys(zip.files)
+        .filter((name) => /^ppt\/media\//i.test(name) && !zip.files[name].dir)
+        .sort((a, b) => a.localeCompare(b));
+
+      if (media.length) {
+        const mdPath = toMdPath(sourcePath);
+        for (let i = 0; i < media.length; i++) {
+          const mediaPath = media[i];
+          const imageExt = getExt(mediaPath) || "png";
+          const imageName = baseNameNoExt(sourcePath) + "-pptx-" + (i + 1) + "." + imageExt;
+          const outPath = buildImageOutPath(sourcePath, imageName);
+          const imageBlob = await zip.files[mediaPath].async("blob");
+
+          if (options.imageMode === "base64") {
+            const dataUrl = await blobToDataUrl(imageBlob);
+            imageRefs.push("![" + imageName + "](" + dataUrl + ")");
+          } else {
+            assets.push({ path: outPath, content: imageBlob, isBinary: true });
+            imageRefs.push("![" + imageName + "](" + relativeLinkFromMd(mdPath, outPath) + ")");
+          }
+        }
+      }
+
+      const imageSection = imageRefs.length ? "\n\n---\n\n## 文档图片\n\n" + imageRefs.join("\n\n") : "";
+      return { md: chunks.join("\n\n---\n\n").trim() + imageSection, assets: assets };
+    }
+
+    async function convertXlsxToMd(blob) {
+      const wb = XLSX.read(await blob.arrayBuffer(), { type: "array" });
+      const parts = [];
+      wb.SheetNames.forEach((name) => {
+        const ws = wb.Sheets[name];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
+        const normalized = rows.filter((r) => r.some((v) => String(v || "").trim() !== ""));
+        if (!normalized.length) return;
+
+        const width = Math.max(...normalized.map((r) => r.length));
+        const lines = normalized.map((r) => {
+          const cells = Array.from({ length: width }, (_, i) => String(r[i] ?? "").replace(/\|/g, "\\|"));
+          return "| " + cells.join(" | ") + " |";
+        });
+        const sep = "| " + Array.from({ length: width }, () => "---").join(" | ") + " |";
+        const table = lines.length > 1 ? [lines[0], sep].concat(lines.slice(1)) : [lines[0], sep];
+        parts.push("## 工作表: " + name + "\n\n" + table.join("\n"));
+      });
+
+      return parts.join("\n\n---\n\n").trim();
+    }
+
+    async function convertEpubToMd(sourcePath, blob, options) {
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const pages = Object.keys(zip.files)
+        .filter((name) => /\.(xhtml|html|htm)$/i.test(name))
+        .sort((a, b) => a.localeCompare(b));
+
+      const out = [];
+      for (let i = 0; i < pages.length; i++) {
+        const html = await zip.files[pages[i]].async("text");
+        const md = turndownService.turndown(html).trim();
+        if (md) out.push("## 章节: " + pages[i] + "\n\n" + md);
+      }
+
+      const assets = [];
+      const imageRefs = [];
+      const images = Object.keys(zip.files)
+        .filter((name) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name) && !zip.files[name].dir)
+        .sort((a, b) => a.localeCompare(b));
+
+      if (images.length) {
+        const mdPath = toMdPath(sourcePath);
+        for (let i = 0; i < images.length; i++) {
+          const imageEntry = images[i];
+          const imageExt = getExt(imageEntry) || "png";
+          const imageName = baseNameNoExt(sourcePath) + "-epub-" + (i + 1) + "." + imageExt;
+          const outPath = buildImageOutPath(sourcePath, imageName);
+          const imageBlob = await zip.files[imageEntry].async("blob");
+
+          if (options.imageMode === "base64") {
+            const dataUrl = await blobToDataUrl(imageBlob);
+            imageRefs.push("![" + imageName + "](" + dataUrl + ")");
+          } else {
+            assets.push({ path: outPath, content: imageBlob, isBinary: true });
+            imageRefs.push("![" + imageName + "](" + relativeLinkFromMd(mdPath, outPath) + ")");
+          }
+        }
+      }
+
+      const imageSection = imageRefs.length ? "\n\n---\n\n## 文档图片\n\n" + imageRefs.join("\n\n") : "";
+      return { md: out.join("\n\n---\n\n").trim() + imageSection, assets: assets };
+    }
+
+    async function convertAudioToMd(name, blob, enableTx) {
+      let metadata = {};
+      try {
+        const parsed = await window.musicMetadata.parseBlob(blob);
+        metadata = {
+          title: parsed.common?.title || "",
+          artist: parsed.common?.artist || "",
+          album: parsed.common?.album || "",
+          duration_sec: parsed.format?.duration || "",
+          bitrate: parsed.format?.bitrate || "",
+          sample_rate: parsed.format?.sampleRate || "",
+          codec: parsed.format?.codec || ""
+        };
+      } catch (_) {
+        metadata = { note: "未提取到音频元数据" };
+      }
+
+      let transcript = "";
+      if (enableTx) {
+        try {
+          transcript = await transcribeAudioBlob(blob);
+        } catch (err) {
+          transcript = "转写失败: " + (err.message || "未知错误");
+        }
+      }
+
+      const lines = [
+        "## 音频文件",
+        "",
+        "- 文件: " + fileNameOnly(name),
+        "",
+        "### 元数据",
+        "",
+        "```json",
+        JSON.stringify(metadata, null, 2),
+        "```"
+      ];
+
+      if (enableTx) {
+        lines.push("", "### 语音转写", "", sanitizeMdText(transcript || "(空)"));
+      }
+
+      return lines.join("\n");
+    }
+
+    async function transcribeAudioBlob(blob) {
+      if (!asrPipeline) {
+        setStatus("首次加载语音模型（需要一些时间）...");
+        const module = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2");
+        module.env.allowLocalModels = false;
+        asrPipeline = await module.pipeline("automatic-speech-recognition", "Xenova/whisper-tiny");
+      }
+
+      const audioBuffer = await blob.arrayBuffer();
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const decoded = await ctx.decodeAudioData(audioBuffer.slice(0));
+      const channel = decoded.numberOfChannels > 1 ? decoded.getChannelData(0) : decoded.getChannelData(0);
+      const result = await asrPipeline(channel, { return_timestamps: false, chunk_length_s: 20, stride_length_s: 5 });
+      await ctx.close();
+      return sanitizeMdText(result.text || "");
+    }
+
+    async function convertYoutubeUrlToMd(url) {
+      const videoId = extractYoutubeVideoId(url);
+      if (!videoId) {
+        throw new Error("不是有效的 YouTube URL");
+      }
+
+      let info = { title: "", author_name: "", provider_name: "YouTube" };
+      try {
+        const metaResp = await fetch("https://noembed.com/embed?url=" + encodeURIComponent(url));
+        if (metaResp.ok) {
+          info = await metaResp.json();
+        }
+      } catch (_) {
+        // ignore metadata failure
+      }
+
+      let transcript = "";
+      try {
+        const txResp = await fetch("https://youtubetranscript.com/?format=json&video_id=" + encodeURIComponent(videoId));
+        if (txResp.ok) {
+          const txData = await txResp.json();
+          const lines = Array.isArray(txData?.transcript)
+            ? txData.transcript.map((x) => x.text).filter(Boolean)
+            : [];
+          transcript = sanitizeMdText(lines.join(" "));
+        }
+      } catch (_) {
+        transcript = "";
+      }
+
+      return [
+        "## YouTube",
+        "",
+        "- URL: " + url,
+        "- Video ID: " + videoId,
+        "- Title: " + (info.title || "未知"),
+        "- Author: " + (info.author_name || "未知"),
+        "",
+        "### Transcript",
+        "",
+        transcript || "未获取到公开字幕，可在有代理/后端服务环境下补抓取。"
+      ].join("\n");
+    }
+
+    function setFile(file) {
+      clearError();
+      const ext = getExt(file.name);
+      if (!SUPPORTED_EXTS.has(ext)) {
+        showError("文件类型暂不支持。可用类型：pdf/docx/txt/md/json/csv/html/xml/yaml/代码文件/zip。");
+        return;
+      }
+      currentFile = file;
+      convertBtn.disabled = false;
+      setStatus("文件已就绪，点击“开始转换”。");
+      fileInfo.style.display = "block";
+      fileInfo.textContent = file.name + " · " + bytesToSize(file.size);
+    }
+
+    function resetAll() {
+      currentFile = null;
+      markdownText = "";
+      outputFiles = [];
+      convertBtn.disabled = true;
+      copyBtn.disabled = true;
+      downloadMdBtn.disabled = true;
+      downloadBtn.disabled = true;
+      fileInfo.style.display = "none";
+      fileInfo.textContent = "";
+      clearError();
+      setStatus("等待上传文件...");
+      mdCode.textContent = "# 输出区\n\n上传文件后会在这里显示 Markdown。";
+      mdPreview.innerHTML = "";
+    }
+
+    function updateOutput(md, files) {
+      markdownText = md;
+      outputFiles = Array.isArray(files) ? files : [];
+      mdCode.textContent = md || "(空输出)";
+      mdPreview.innerHTML = marked.parse(md || "");
+      copyBtn.disabled = !md;
+      downloadMdBtn.disabled = !md;
+      downloadBtn.disabled = !outputFiles.length;
+      setStatus("转换完成。");
+    }
+
+    function toMdPath(filePath) {
+      const normalized = normalizePosixPath(filePath);
+      return normalized.replace(/\.[^/.]+$/, "") + ".md";
+    }
+
+    async function convertDocxToMd(sourcePath, file, options) {
+      const arrayBuffer = await file.arrayBuffer();
+      const assets = [];
+      const mdPath = toMdPath(sourcePath);
+      let imageIndex = 1;
+      const result = await mammoth.convertToHtml(
+        { arrayBuffer: arrayBuffer },
+        {
+          convertImage: mammoth.images.imgElement(async (image) => {
+            const ext = extFromMime(image.contentType);
+            const imageName = baseNameNoExt(sourcePath) + "-docx-" + imageIndex + "." + ext;
+            imageIndex += 1;
+
+            if (options.imageMode === "base64") {
+              const b64 = await image.read("base64");
+              return { src: "data:" + image.contentType + ";base64," + b64 };
+            }
+
+            const b64 = await image.read("base64");
+            const outPath = buildImageOutPath(sourcePath, imageName);
+            assets.push({
+              path: outPath,
+              content: base64ToBlob(b64, image.contentType),
+              isBinary: true
+            });
+            return { src: relativeLinkFromMd(mdPath, outPath) };
+          })
+        }
+      );
+      return { md: turndownService.turndown(result.value).trim(), assets: assets };
+    }
+
+    async function convertPdfToMd(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pages = [];
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        setStatus("正在处理 PDF：第 " + i + " / " + pdf.numPages + " 页...");
+        const page = await pdf.getPage(i);
+        const text = await page.getTextContent();
+
+        // 按 Y 坐标聚合，尽量恢复行结构。
+        const rows = new Map();
+        for (const item of text.items) {
+          const y = Math.round(item.transform[5]);
+          if (!rows.has(y)) rows.set(y, []);
+          rows.get(y).push({ x: item.transform[4], str: item.str });
+        }
+
+        const sortedY = Array.from(rows.keys()).sort((a, b) => b - a);
+        const lines = sortedY.map((y) => rows.get(y)
+          .sort((a, b) => a.x - b.x)
+          .map((chunk) => chunk.str)
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim())
+          .filter(Boolean);
+
+        const normalized = lines.map((line) => {
+          // 简单标题推断：短行且不以句号结尾时作为二级标题。
+          if (line.length > 0 && line.length < 24 && !/[。.!?？]$/.test(line)) {
+            return "## " + line;
+          }
+          return line;
+        });
+
+        pages.push("## 第 " + i + " 页\n\n" + normalized.join("\n\n"));
+      }
+
+      return pages.join("\n\n---\n\n").trim();
+    }
+
+    async function convertTextLikeToMd(name, blob) {
+      const ext = getExt(name);
+      const text = await blob.text();
+
+      if (ext === "md" || ext === "markdown") {
+        return text.trim();
+      }
+
+      if (ext === "html" || ext === "htm") {
+        return turndownService.turndown(text).trim();
+      }
+
+      if (ext === "txt" || ext === "log") {
+        return text.trim();
+      }
+
+      const lang = getLanguageByExt(ext);
+      return ["```" + lang, text.trim(), "```"].join("\n");
+    }
+
+    async function convertSingleFileToMd(name, blob, options) {
+      const ext = getExt(name);
+
+      if (ext === "pdf") {
+        return { md: await convertPdfToMd(blob), assets: [] };
+      }
+
+      if (ext === "docx") {
+        return convertDocxToMd(name, blob, options);
+      }
+
+      if (ext === "doc") {
+        throw new Error(".doc 在纯前端环境下解析不稳定，请另存为 .docx 后再转换。");
+      }
+
+      if (TEXT_EXTS.has(ext)) {
+        return { md: await convertTextLikeToMd(name, blob), assets: [] };
+      }
+
+      throw new Error("不支持的文件类型：" + ext);
+    }
+
+    async function convertImageToMd(name, blob, mode, enableOcr) {
+      const ext = getExt(name);
+      const alt = fileNameOnly(name).replace(/\.[^/.]+$/, "");
+      let exif = {};
+      try {
+        exif = await window.exifr.parse(blob) || {};
+      } catch (_) {
+        exif = {};
+      }
+
+      let ocrText = "";
+      if (enableOcr) {
+        setStatus("图片 OCR 处理中: " + fileNameOnly(name));
+        try {
+          const ocr = await Tesseract.recognize(blob, "eng+chi_sim");
+          ocrText = sanitizeMdText(ocr?.data?.text || "");
+        } catch (err) {
+          ocrText = "OCR 失败: " + (err.message || "未知错误");
+        }
+      }
+
+      if (mode === "base64") {
+        const dataUrl = await blobToDataUrl(blob);
+        const body = [
+          "![" + alt + "](" + dataUrl + ")",
+          "",
+          "### EXIF",
+          "",
+          "```json",
+          JSON.stringify(exif, null, 2),
+          "```"
+        ];
+        if (enableOcr) {
+          body.push("", "### OCR", "", ocrText || "(空)");
+        }
+        const md = body.join("\n");
+        return { md: md, assets: [] };
+      }
+
+      const mdPath = toMdPath(name);
+      const outPath = buildImageOutPath(name, fileNameOnly(name));
+      const imagePath = relativeLinkFromMd(mdPath, outPath);
+      const body = [
+        "![" + alt + "](" + imagePath + ")",
+        "",
+        "### EXIF",
+        "",
+        "```json",
+        JSON.stringify(exif, null, 2),
+        "```"
+      ];
+      if (enableOcr) {
+        body.push("", "### OCR", "", ocrText || "(空)");
+      }
+      const md = body.join("\n");
+      return { md: md, assets: [{ path: outPath, content: blob, isBinary: true }] };
+    }
+
+    async function convertAnyFileToMd(name, blob, options) {
+      const ext = getExt(name);
+
+      if (IMAGE_EXTS.has(ext)) {
+        return convertImageToMd(name, blob, options.imageMode, options.imageOcr);
+      }
+
+      if (AUDIO_EXTS.has(ext)) {
+        const md = await convertAudioToMd(name, blob, options.audioTx);
+        return { md: md, assets: [] };
+      }
+
+      if (ext === "pptx") {
+        return convertPptxToMd(name, blob, options);
+      }
+
+      if (ext === "xlsx" || ext === "xls") {
+        return { md: await convertXlsxToMd(blob), assets: [] };
+      }
+
+      if (ext === "epub") {
+        return convertEpubToMd(name, blob, options);
+      }
+
+      return convertSingleFileToMd(name, blob, options);
+    }
+
+    async function convertZipToMd(file) {
+      setStatus("正在读取 ZIP 包...");
+      const zip = await JSZip.loadAsync(await file.arrayBuffer());
+      const entries = Object.values(zip.files)
+        .filter((entry) => !entry.dir)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      if (entries.length === 0) {
+        throw new Error("ZIP 包中没有可处理文件。");
+      }
+
+      const docs = [];
+      const skipped = [];
+      const files = [];
+      let done = 0;
+      const results = new Array(entries.length);
+      let cursor = 0;
+
+      async function worker() {
+        while (true) {
+          const current = cursor;
+          cursor += 1;
+          if (current >= entries.length) return;
+
+          const entry = entries[current];
+          const ext = getExt(entry.name);
+          setStatus("正在处理 ZIP：" + (done + 1) + " / " + entries.length + " · " + entry.name);
+
+          if (!SUPPORTED_EXTS.has(ext) || ext === "zip") {
+            results[current] = { skipped: entry.name };
+            done += 1;
+            continue;
+          }
+
+          try {
+            const blob = await entry.async("blob");
+            const converted = await convertAnyFileToMd(entry.name, blob, {
+              imageMode: imageMode.value,
+              imageOcr: enableImageOcr.checked,
+              audioTx: enableAudioTx.checked
+            });
+            results[current] = {
+              entryName: entry.name,
+              md: (converted.md || "").trim(),
+              assets: converted.assets || []
+            };
+          } catch (err) {
+            results[current] = { skipped: entry.name + " (" + (err.message || "转换失败") + ")" };
+          }
+          done += 1;
+        }
+      }
+
+      const workerCount = Math.min(ZIP_CONCURRENCY, entries.length);
+      await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+      const usedPaths = new Set();
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        if (!r) continue;
+        if (r.skipped) {
+          skipped.push(r.skipped);
+          continue;
+        }
+
+        if (r.md) {
+          const mdPath = ensureUniquePath(toMdPath(r.entryName), usedPaths);
+          files.push({ path: mdPath, content: r.md });
+          docs.push("# 文件: " + mdPath + "\n\n" + r.md);
+        }
+
+        r.assets.forEach((asset) => {
+          const unique = ensureUniquePath(asset.path, usedPaths);
+          files.push({ path: unique, content: asset.content, isBinary: asset.isBinary });
+        });
+      }
+
+      if (docs.length === 0) {
+        throw new Error("ZIP 中没有成功转换的文件。请检查文件类型或内容编码。");
+      }
+
+      const skippedBlock = skipped.length
+        ? "\n\n---\n\n## 跳过文件\n\n" + skipped.map((name) => "- " + name).join("\n")
+        : "";
+
+      const combined = [
+        "# ZIP 递归转换结果",
+        "",
+        "总文件数: " + entries.length,
+        "成功转换: " + docs.length,
+        "跳过或失败: " + skipped.length,
+        "",
+        "---",
+        "",
+        docs.join("\n\n---\n\n")
+      ].join("\n") + skippedBlock;
+
+      files.push({ path: ensureUniquePath("_combined.md", usedPaths), content: combined });
+      return { combined: combined, files: files };
+    }
+
+    async function convertCurrentFile() {
+      if (!currentFile) return;
+      clearError();
+      convertBtn.disabled = true;
+      setStatus("开始转换...");
+
+      try {
+        const ext = getExt(currentFile.name);
+        let result = null;
+
+        if (ext === "zip") {
+          result = await convertZipToMd(currentFile);
+        } else {
+          if (ext === "docx") {
+            setStatus("正在处理 Word 文档...");
+          }
+          const converted = await convertAnyFileToMd(currentFile.name, currentFile, {
+            imageMode: imageMode.value,
+            imageOcr: enableImageOcr.checked,
+            audioTx: enableAudioTx.checked
+          });
+          const md = converted.md;
+          const baseName = fileNameOnly(currentFile.name);
+          const usedPaths = new Set();
+          result = {
+            combined: md,
+            files: [{ path: ensureUniquePath(toMdPath(baseName), usedPaths), content: md }].concat(
+              converted.assets.map((asset) => ({
+                path: ensureUniquePath(normalizePosixPath(asset.path), usedPaths),
+                content: asset.content,
+                isBinary: asset.isBinary
+              }))
+            )
+          };
+        }
+
+        updateOutput(result.combined, result.files);
+      } catch (err) {
+        showError("转换失败：" + (err.message || "未知错误"));
+        setStatus("转换失败。");
+      } finally {
+        convertBtn.disabled = !currentFile;
+      }
+    }
+
+    dropZone.addEventListener("click", () => fileInput.click());
+
+    ["dragenter", "dragover", "dragleave", "drop"].forEach((evtName) => {
+      dropZone.addEventListener(evtName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    ["dragenter", "dragover"].forEach((evtName) => {
+      dropZone.addEventListener(evtName, () => dropZone.classList.add("drag"));
+    });
+
+    ["dragleave", "drop"].forEach((evtName) => {
+      dropZone.addEventListener(evtName, () => dropZone.classList.remove("drag"));
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        setFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files && fileInput.files[0]) {
+        setFile(fileInput.files[0]);
+      }
+    });
+
+    convertBtn.addEventListener("click", convertCurrentFile);
+
+    youtubeBtn.addEventListener("click", async () => {
+      const url = youtubeInput.value.trim();
+      if (!url) {
+        showError("请先输入 YouTube URL");
+        return;
+      }
+      clearError();
+      youtubeBtn.disabled = true;
+      setStatus("正在转换 YouTube URL...");
+      try {
+        const md = await convertYoutubeUrlToMd(url);
+        updateOutput(md, [{ path: "youtube.md", content: md }]);
+      } catch (err) {
+        showError("URL 转换失败：" + (err.message || "未知错误"));
+        setStatus("URL 转换失败。");
+      } finally {
+        youtubeBtn.disabled = false;
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      fileInput.value = "";
+      resetAll();
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      if (!markdownText) return;
+      await navigator.clipboard.writeText(markdownText);
+      setStatus("已复制 Markdown 到剪贴板。");
+    });
+
+    downloadBtn.addEventListener("click", async () => {
+      if (!outputFiles.length || !currentFile) return;
+      const outZip = new JSZip();
+      outputFiles.forEach((file) => {
+        outZip.file(file.path, file.content);
+      });
+
+      const zipBlob = await outZip.generateAsync({ type: "blob" });
+      const zipName = currentFile.name.replace(/\.[^/.]+$/, "") + "-markdown.zip";
+      const a = document.createElement("a");
+      const url = URL.createObjectURL(zipBlob);
+      a.href = url;
+      a.download = zipName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setStatus("Markdown ZIP 已下载（保留目录结构）。");
+    });
+
+    downloadMdBtn.addEventListener("click", async () => {
+      if (!markdownText || !currentFile) return;
+      const blob = new Blob([markdownText], { type: "text/markdown;charset=utf-8" });
+      const mdName = currentFile.name.replace(/\.[^/.]+$/, "") + ".md";
+      const a = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = mdName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setStatus("Markdown 文件已下载。");
+    });
+
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((el) => el.classList.remove("active"));
+        tab.classList.add("active");
+        const target = tab.dataset.tab;
+        document.querySelectorAll(".pane").forEach((pane) => pane.classList.remove("active"));
+        if (target === "code") {
+          mdCode.classList.add("active");
+        } else {
+          mdPreview.classList.add("active");
+        }
+      });
+    });
+  </script>
+</body>
+</html>
