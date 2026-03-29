@@ -14,7 +14,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/music-metadata-browser@2.5.10/dist/music-metadata-browser.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
   <style>
     :root {
@@ -226,22 +225,6 @@
       align-items: center;
     }
 
-    .url-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .url-row input {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px 11px;
-      background: rgba(255, 255, 255, 0.82);
-      color: var(--ink);
-      font-size: 0.9rem;
-    }
-
     .right {
       display: grid;
       grid-template-rows: auto 1fr;
@@ -263,6 +246,24 @@
       font-size: 0.88rem;
       color: rgba(23, 32, 38, 0.84);
       min-height: 20px;
+    }
+
+    .progress-bar-wrap {
+      width: 100%;
+      height: 4px;
+      background: var(--line);
+      border-radius: 2px;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .progress-bar-wrap.active { opacity: 1; }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent-2), var(--accent));
+      border-radius: 2px;
+      transition: width 0.15s ease;
     }
 
     .tabs {
@@ -355,7 +356,7 @@
         <h1 class="title">多格式文件转 Markdown</h1>
         <p class="subtitle">纯前端实现，支持单文件与 ZIP 递归处理，文件仅在浏览器本地处理。</p>
       </div>
-      <div class="badge">支持 PDF / PPTX / DOCX / XLSX / EPUB / ZIP / URL</div>
+      <div class="badge">支持 PDF / PPTX / DOCX / XLSX / EPUB / ZIP</div>
     </section>
 
     <section class="panel-wrap">
@@ -386,18 +387,68 @@
           </select>
         </div>
 
-        <div class="switches">
-          <label><input id="enableImageOcr" type="checkbox"> 图片启用 OCR（较慢）</label>
-          <label><input id="enableAudioTx" type="checkbox"> 音频启用转写（实验功能）</label>
+        <div class="field">
+          <label>OCR 引擎（Ollama）</label>
+          <label for="ollamaUrlSelect" style="font-size:0.8rem;font-weight:normal;margin-top:4px">Ollama 地址</label>
+          <select id="ollamaUrlSelect" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:0.85rem;">
+            <option value="http://localhost:11434">Local (localhost)</option>
+            <option value="http://100.84.31.6:11434">Desktop 3090</option>
+            <option value="http://100.67.168.77:11434">Desktop 1080ti</option>
+            <option value="http://100.105.159.127:11434">Laptop 5070ti</option>
+            <option value="custom">自定义地址...</option>
+          </select>
+          <input id="ollamaUrl" type="text" value="http://localhost:11434" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:0.85rem;display:none;" placeholder="输入自定义 Ollama 地址">
+          <label for="ollamaModel" style="font-size:0.8rem;font-weight:normal;margin-top:6px">VLM 模型</label>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;">
+            <select id="ollamaModel" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:0.85rem;">
+              <option value="">点击刷新获取模型列表</option>
+            </select>
+            <button id="refreshModelsBtn" class="ghost" type="button" style="padding:6px 10px;font-size:0.8rem;white-space:nowrap;">刷新</button>
+          </div>
+          <span id="modelListHint" style="font-size:0.75rem;color:rgba(23,32,38,0.6);margin-top:2px;"></span>
         </div>
 
-        <div class="url-row">
-          <input id="youtubeInput" type="text" placeholder="粘贴 YouTube URL 直接转换">
-          <button id="youtubeBtn" class="ghost" type="button">转换 URL</button>
+        <div class="field">
+          <label for="audioEngine">音频转写引擎</label>
+          <select id="audioEngine">
+            <option value="whisper-tiny">Whisper-tiny（~40MB，速度快）</option>
+            <option value="whisper-base">Whisper-base（~140MB，中文更好）</option>
+            <option value="whisper-small">Whisper-small（~460MB，较好）</option>
+            <option value="whisper-medium">Whisper-medium（~1.5GB，高质量）</option>
+            <option value="whisper-large-v3">Whisper-large-v3（~3GB，最佳质量）</option>
+            <option value="whisper-large-v3-turbo">Whisper-large-v3-turbo（~1.6GB，快且好）</option>
+            <option value="whisper-api">本地 Whisper API（需自行运行服务）</option>
+          </select>
         </div>
+
+        <div id="whisperApiOptions" class="field" style="display:none">
+          <label for="whisperApiUrl">Whisper API 地址</label>
+          <input id="whisperApiUrl" type="text" value="http://localhost:8000/v1/audio/transcriptions" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:0.85rem;">
+          <span style="font-size:0.75rem;color:rgba(23,32,38,0.6);margin-top:4px;">OpenAI 兼容接口，如 faster-whisper-server、whisper.cpp server</span>
+        </div>
+
+        <div class="field">
+          <label for="modelSource">模型下载源</label>
+          <select id="modelSource">
+            <option value="hf-mirror">HF-Mirror 国内镜像（推荐）</option>
+            <option value="huggingface">HuggingFace 官方</option>
+          </select>
+        </div>
+
+        <div class="switches">
+          <label><input id="enableImageOcr" type="checkbox"> 图片启用 OCR</label>
+          <label><input id="enableDocImageOcr" type="checkbox"> 文档内嵌图片 OCR（DOCX/PPTX/EPUB/PDF）</label>
+          <label><input id="enablePdfOcr" type="checkbox"> PDF 扫描件 OCR 回退</label>
+          <label><input id="enableAudioTx" type="checkbox"> 音频启用转写</label>
+        </div>
+
+        <div class="hint" id="modelHint" style="display:none;color:var(--accent-2);font-size:0.8rem;margin-top:8px;">
+          提示：首次使用 Whisper-base/small 及以上模型需要下载，请耐心等待。模型会缓存在浏览器中，后续使用无需重复下载。
+        </div>
+
 
         <div class="hint">
-          说明：支持 PDF/PPTX/DOCX/XLSX/EPUB/图片/音频/HTML/CSV/JSON/XML/ZIP。ZIP 会递归转换并保留目录结构导出。YouTube URL 可提取基础信息，字幕受来源可用性影响。
+          说明：支持 PDF/PPTX/DOCX/XLSX/EPUB/图片/音频/HTML/CSV/JSON/XML/ZIP。ZIP 会递归转换并保留目录结构导出。OCR 通过本地 Ollama VLM 模型实现（支持 Qwen、LLaVA 等）。音频转写支持浏览器内 Whisper（tiny 至 large-v3）或本地 Whisper API 服务。所有处理均在本地完成，文件不会上传到云端。
         </div>
 
         <div id="errorBox" class="danger"></div>
@@ -406,6 +457,7 @@
       <section class="panel right">
         <div class="toolbar">
           <div id="status" class="status">等待上传文件...</div>
+          <div id="progressBarWrap" class="progress-bar-wrap"><div id="progressBarFill" class="progress-bar-fill"></div></div>
           <div class="tabs">
             <button class="tab active" data-tab="code">Markdown</button>
             <button class="tab" data-tab="preview">预览</button>
@@ -434,12 +486,17 @@
     const downloadMdBtn = document.getElementById("downloadMdBtn");
     const fileInfo = document.getElementById("fileInfo");
     const statusEl = document.getElementById("status");
+    const progressBarWrap = document.getElementById("progressBarWrap");
+    const progressBarFill = document.getElementById("progressBarFill");
     const errorBox = document.getElementById("errorBox");
     const imageMode = document.getElementById("imageMode");
     const enableImageOcr = document.getElementById("enableImageOcr");
+    const enableDocImageOcr = document.getElementById("enableDocImageOcr");
+    const enablePdfOcr = document.getElementById("enablePdfOcr");
     const enableAudioTx = document.getElementById("enableAudioTx");
-    const youtubeInput = document.getElementById("youtubeInput");
-    const youtubeBtn = document.getElementById("youtubeBtn");
+    const audioEngine = document.getElementById("audioEngine");
+    const modelHint = document.getElementById("modelHint");
+    const modelSource = document.getElementById("modelSource");
     const mdCode = document.getElementById("mdCode");
     const mdPreview = document.getElementById("mdPreview");
     const turndownService = new TurndownService({
@@ -467,10 +524,198 @@
     let markdownText = "";
     let outputFiles = [];
     let asrPipeline = null;
+    let asrModule = null;
     const ZIP_CONCURRENCY = 3;
+
+    /* ── OCR 统一入口（Ollama） ── */
+
+    async function runOcr(blob) {
+      return runOllamaOcr(blob);
+    }
+
+    /* ── Ollama 本地 VLM OCR ── */
+
+    async function runOllamaOcr(blob) {
+      const ollamaUrlEl = document.getElementById("ollamaUrl");
+      const ollamaModelEl = document.getElementById("ollamaModel");
+      const baseUrl = (ollamaUrlEl.value || "http://localhost:11434").replace(/\/+$/, "");
+      const model = ollamaModelEl.value || "qwen3.5:9b";
+
+      setStatus("Ollama OCR：正在识别图片（" + model + "）...");
+
+      const reader = new FileReader();
+      const base64 = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      const resp = await fetch(baseUrl + "/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: model,
+          messages: [{
+            role: "user",
+            content: "请对这张图片进行 OCR 文字识别，以 Markdown 格式输出识别到的内容。保留原文的标题层级、列表、表格等结构。直接输出 Markdown，不要添加任何解释、描述或代码块包裹。",
+            images: [base64]
+          }],
+          stream: false
+        })
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        throw new Error("Ollama 请求失败 (" + resp.status + "): " + errText);
+      }
+
+      const data = await resp.json();
+      const text = data.message && data.message.content ? data.message.content : "";
+      return sanitizeMdText(text);
+    }
+
+    /* ── 模型下载源配置 ── */
+
+    function getModelSourceConfig() {
+      const src = modelSource.value;
+      if (src === "huggingface") {
+        return { host: "https://huggingface.co", label: "HuggingFace" };
+      }
+      return { host: "https://hf-mirror.com", label: "HF-Mirror" };
+    }
+
+    /* ── Whisper 模型大小选择（本地） ── */
+
+    async function loadAsrPipelineWithModel(modelSize) {
+      const modelMap = {
+        "whisper-tiny": "Xenova/whisper-tiny",
+        "whisper-base": "Xenova/whisper-base",
+        "whisper-small": "Xenova/whisper-small",
+        "whisper-medium": "Xenova/whisper-medium",
+        "whisper-large-v3": "Xenova/whisper-large-v3",
+        "whisper-large-v3-turbo": "Xenova/whisper-large-v3-turbo"
+      };
+      const modelName = modelMap[modelSize] || modelMap["whisper-tiny"];
+
+      // 如果已加载且是同一模型则复用
+      if (asrPipeline && asrPipeline._modelName === modelName) return asrPipeline;
+
+      const src = getModelSourceConfig();
+      setStatus("正在从 " + src.label + " 加载 " + modelName + "（首次需下载）...");
+      asrModule = asrModule || await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2");
+      asrModule.env.allowLocalModels = true;
+      asrModule.env.allowRemoteModels = true;
+      asrModule.env.remoteHost = src.host;
+      asrModule.env.remotePathTemplate = "{model}/resolve/{revision}/";
+
+      try {
+        asrPipeline = await asrModule.pipeline("automatic-speech-recognition", modelName, {
+          progress_callback: (p) => {
+            if (p.status === "progress" && p.total) {
+              const pct = Math.round((p.loaded / p.total) * 100);
+              setStatus("下载 " + (p.file || modelName) + ": " + pct + "%");
+            } else if (p.status === "ready") {
+              setStatus(modelName + " 模型加载完成。");
+            }
+          }
+        });
+        asrPipeline._modelName = modelName;
+        return asrPipeline;
+      } catch (err) {
+        throw new Error(
+          "语音模型加载失败 (" + modelName + ")。来源: " + src.label + "\n请检查网络或切换模型下载源。\n原始错误: " + (err.message || "未知")
+        );
+      }
+    }
+
+    /* ── UI 显隐控制 ── */
+
+    function updateUIVisibility() {
+      document.getElementById("whisperApiOptions").style.display = audioEngine.value === "whisper-api" ? "grid" : "none";
+      const needsBrowserModel = audioEngine.value !== "whisper-tiny" && audioEngine.value !== "whisper-api";
+      modelHint.style.display = needsBrowserModel ? "block" : "none";
+    }
+
+    audioEngine.addEventListener("change", updateUIVisibility);
+    updateUIVisibility();
+
+    /* ── Ollama 地址选择 ── */
+    const ollamaUrlSelect = document.getElementById("ollamaUrlSelect");
+    const ollamaUrlInput = document.getElementById("ollamaUrl");
+    ollamaUrlSelect.addEventListener("change", () => {
+      if (ollamaUrlSelect.value === "custom") {
+        ollamaUrlInput.style.display = "";
+        ollamaUrlInput.value = "";
+        ollamaUrlInput.focus();
+      } else {
+        ollamaUrlInput.style.display = "none";
+        ollamaUrlInput.value = ollamaUrlSelect.value;
+      }
+      fetchOllamaModels();
+    });
+
+    /* ── Ollama 模型列表 ── */
+    const ollamaModelSelect = document.getElementById("ollamaModel");
+    const refreshModelsBtn = document.getElementById("refreshModelsBtn");
+    const modelListHint = document.getElementById("modelListHint");
+
+    function getEffectiveOllamaUrl() {
+      return (ollamaUrlInput.value || "http://localhost:11434").replace(/\/+$/, "");
+    }
+
+    const OLLAMA_DEFAULT_MODEL = "qwen3.5:9b";
+
+    async function fetchOllamaModels() {
+      const baseUrl = getEffectiveOllamaUrl();
+      modelListHint.textContent = "正在查询模型...";
+      ollamaModelSelect.disabled = true;
+
+      try {
+        const resp = await fetch(baseUrl + "/api/tags");
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const data = await resp.json();
+        const models = (data.models || []).map((m) => m.name || m.model).filter(Boolean);
+
+        ollamaModelSelect.innerHTML = "";
+        if (models.length === 0) {
+          ollamaModelSelect.innerHTML = '<option value="">未找到模型</option>';
+          modelListHint.textContent = "服务器无可用模型";
+        } else {
+          models.forEach((name) => {
+            const opt = document.createElement("option");
+            opt.value = name;
+            opt.textContent = name;
+            ollamaModelSelect.appendChild(opt);
+          });
+          // 默认选中 qwen3.5:9b
+          if (models.includes(OLLAMA_DEFAULT_MODEL)) {
+            ollamaModelSelect.value = OLLAMA_DEFAULT_MODEL;
+          }
+          modelListHint.textContent = "共 " + models.length + " 个模型";
+        }
+      } catch (err) {
+        ollamaModelSelect.innerHTML = '<option value="">获取失败</option>';
+        modelListHint.textContent = "无法连接: " + (err.message || "未知错误");
+      } finally {
+        ollamaModelSelect.disabled = false;
+      }
+    }
+
+    refreshModelsBtn.addEventListener("click", fetchOllamaModels);
+    fetchOllamaModels();
 
     function setStatus(text) {
       statusEl.textContent = text;
+    }
+
+    function setProgress(percent) {
+      if (percent < 0) {
+        progressBarWrap.classList.remove("active");
+        progressBarFill.style.width = "0%";
+      } else {
+        progressBarWrap.classList.add("active");
+        progressBarFill.style.width = Math.min(100, Math.max(0, percent)) + "%";
+      }
     }
 
     function showError(message) {
@@ -559,11 +804,6 @@
       return path.split(/[\\/]/).pop();
     }
 
-    function extractYoutubeVideoId(url) {
-      const yt = /(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/;
-      const m = String(url || "").match(yt);
-      return m ? m[1] : "";
-    }
 
     function sanitizeMdText(text) {
       return String(text || "").replace(/\r\n/g, "\n").trim();
@@ -695,6 +935,17 @@
             assets.push({ path: outPath, content: imageBlob, isBinary: true });
             imageRefs.push("![" + imageName + "](" + relativeLinkFromMd(mdPath, outPath) + ")");
           }
+
+          // 文档内嵌图片 OCR
+          if (options.docImageOcr && IMAGE_EXTS.has(imageExt)) {
+            try {
+              setStatus("PPTX 内嵌图片 OCR: " + imageName);
+              const ocrText = await runOcr(imageBlob);
+              if (ocrText) {
+                imageRefs.push("\n> **OCR:** " + ocrText.replace(/\n/g, "\n> "));
+              }
+            } catch (_) {}
+          }
         }
       }
 
@@ -759,6 +1010,17 @@
             assets.push({ path: outPath, content: imageBlob, isBinary: true });
             imageRefs.push("![" + imageName + "](" + relativeLinkFromMd(mdPath, outPath) + ")");
           }
+
+          // 文档内嵌图片 OCR
+          if (options.docImageOcr) {
+            try {
+              setStatus("EPUB 内嵌图片 OCR: " + imageName);
+              const ocrText = await runOcr(imageBlob);
+              if (ocrText) {
+                imageRefs.push("\n> **OCR:** " + ocrText.replace(/\n/g, "\n> "));
+              }
+            } catch (_) {}
+          }
         }
       }
 
@@ -766,7 +1028,7 @@
       return { md: out.join("\n\n---\n\n").trim() + imageSection, assets: assets };
     }
 
-    async function convertAudioToMd(name, blob, enableTx) {
+    async function convertAudioToMd(name, blob, enableTx, options) {
       let metadata = {};
       try {
         const parsed = await window.musicMetadata.parseBlob(blob);
@@ -786,7 +1048,12 @@
       let transcript = "";
       if (enableTx) {
         try {
-          transcript = await transcribeAudioBlob(blob);
+          const whisperSize = (options && options.audioEngine) || "whisper-tiny";
+          if (whisperSize === "whisper-api") {
+            transcript = await transcribeAudioBlobViaApi(blob);
+          } else {
+            transcript = await transcribeAudioBlob(blob, whisperSize);
+          }
         } catch (err) {
           transcript = "转写失败: " + (err.message || "未知错误");
         }
@@ -811,66 +1078,51 @@
       return lines.join("\n");
     }
 
-    async function transcribeAudioBlob(blob) {
-      if (!asrPipeline) {
-        setStatus("首次加载语音模型（需要一些时间）...");
-        const module = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2");
-        module.env.allowLocalModels = false;
-        asrPipeline = await module.pipeline("automatic-speech-recognition", "Xenova/whisper-tiny");
-      }
-
+    async function transcribeAudioBlob(blob, modelSize) {
+      const pipeline = await loadAsrPipelineWithModel(modelSize || "whisper-tiny");
+      setStatus("正在解码音频...");
       const audioBuffer = await blob.arrayBuffer();
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const decoded = await ctx.decodeAudioData(audioBuffer.slice(0));
-      const channel = decoded.numberOfChannels > 1 ? decoded.getChannelData(0) : decoded.getChannelData(0);
-      const result = await asrPipeline(channel, { return_timestamps: false, chunk_length_s: 20, stride_length_s: 5 });
-      await ctx.close();
-      return sanitizeMdText(result.text || "");
+      try {
+        const decoded = await ctx.decodeAudioData(audioBuffer.slice(0));
+        const channel = decoded.getChannelData(0);
+        const durationSec = Math.round(decoded.duration);
+        setStatus("音频转写中（" + durationSec + "秒），请耐心等待...");
+        const result = await pipeline(channel, {
+          return_timestamps: false,
+          chunk_length_s: 20,
+          stride_length_s: 5
+        });
+        return sanitizeMdText(result.text || "");
+      } finally {
+        await ctx.close();
+      }
     }
 
-    async function convertYoutubeUrlToMd(url) {
-      const videoId = extractYoutubeVideoId(url);
-      if (!videoId) {
-        throw new Error("不是有效的 YouTube URL");
+    /* ── 本地 Whisper API 转写 ── */
+
+    async function transcribeAudioBlobViaApi(blob) {
+      const apiUrl = document.getElementById("whisperApiUrl").value || "http://localhost:8000/v1/audio/transcriptions";
+      setStatus("正在通过本地 Whisper API 转写音频...");
+
+      const formData = new FormData();
+      formData.append("file", blob, "audio.wav");
+      formData.append("model", "whisper-1");
+
+      const resp = await fetch(apiUrl, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        throw new Error("Whisper API 请求失败 (" + resp.status + "): " + errText);
       }
 
-      let info = { title: "", author_name: "", provider_name: "YouTube" };
-      try {
-        const metaResp = await fetch("https://noembed.com/embed?url=" + encodeURIComponent(url));
-        if (metaResp.ok) {
-          info = await metaResp.json();
-        }
-      } catch (_) {
-        // ignore metadata failure
-      }
-
-      let transcript = "";
-      try {
-        const txResp = await fetch("https://youtubetranscript.com/?format=json&video_id=" + encodeURIComponent(videoId));
-        if (txResp.ok) {
-          const txData = await txResp.json();
-          const lines = Array.isArray(txData?.transcript)
-            ? txData.transcript.map((x) => x.text).filter(Boolean)
-            : [];
-          transcript = sanitizeMdText(lines.join(" "));
-        }
-      } catch (_) {
-        transcript = "";
-      }
-
-      return [
-        "## YouTube",
-        "",
-        "- URL: " + url,
-        "- Video ID: " + videoId,
-        "- Title: " + (info.title || "未知"),
-        "- Author: " + (info.author_name || "未知"),
-        "",
-        "### Transcript",
-        "",
-        transcript || "未获取到公开字幕，可在有代理/后端服务环境下补抓取。"
-      ].join("\n");
+      const data = await resp.json();
+      return sanitizeMdText(data.text || "");
     }
+
 
     function setFile(file) {
       clearError();
@@ -921,42 +1173,79 @@
     async function convertDocxToMd(sourcePath, file, options) {
       const arrayBuffer = await file.arrayBuffer();
       const assets = [];
+      const docImageOcrResults = [];
       const mdPath = toMdPath(sourcePath);
       let imageIndex = 1;
+      const pendingOcrImages = [];
       const result = await mammoth.convertToHtml(
         { arrayBuffer: arrayBuffer },
         {
           convertImage: mammoth.images.imgElement(async (image) => {
             const ext = extFromMime(image.contentType);
             const imageName = baseNameNoExt(sourcePath) + "-docx-" + imageIndex + "." + ext;
+            const currentIdx = imageIndex;
             imageIndex += 1;
 
+            const b64 = await image.read("base64");
+            const imageBlob = base64ToBlob(b64, image.contentType);
+
+            // 收集图片用于后续 OCR（不在 mammoth 回调中做耗时操作）
+            if (options.docImageOcr) {
+              pendingOcrImages.push({ index: currentIdx, name: imageName, blob: imageBlob });
+            }
+
             if (options.imageMode === "base64") {
-              const b64 = await image.read("base64");
               return { src: "data:" + image.contentType + ";base64," + b64 };
             }
 
-            const b64 = await image.read("base64");
             const outPath = buildImageOutPath(sourcePath, imageName);
             assets.push({
               path: outPath,
-              content: base64ToBlob(b64, image.contentType),
+              content: imageBlob,
               isBinary: true
             });
             return { src: relativeLinkFromMd(mdPath, outPath) };
           })
         }
       );
-      return { md: turndownService.turndown(result.value).trim(), assets: assets };
+      let md = turndownService.turndown(result.value).trim();
+
+      // mammoth 转换完成后，再逐个 OCR 内嵌图片
+      for (const img of pendingOcrImages) {
+        try {
+          setStatus("DOCX 内嵌图片 OCR: " + img.name);
+          const ocrText = await runOcr(img.blob);
+          if (ocrText) {
+            docImageOcrResults.push({ index: img.index, name: img.name, text: ocrText });
+          }
+        } catch (_) {}
+      }
+
+      // 追加内嵌图片 OCR 结果
+      if (docImageOcrResults.length > 0) {
+        const ocrSection = docImageOcrResults.map((r) =>
+          "#### " + r.name + "\n\n" + r.text
+        ).join("\n\n");
+        md += "\n\n---\n\n## 内嵌图片 OCR 识别结果\n\n" + ocrSection;
+      }
+
+      return { md: md, assets: assets };
     }
 
-    async function convertPdfToMd(file) {
+    async function convertPdfToMd(file, options) {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const pages = [];
+      const assets = [];
+      const pdfOcr = options && options.pdfOcr;
+      const docImageOcr = options && options.docImageOcr;
+      const sourcePath = options._sourcePath || "document";
+      const mdPath = toMdPath(sourcePath);
+      let imgIdx = 1;
 
       for (let i = 1; i <= pdf.numPages; i++) {
         setStatus("正在处理 PDF：第 " + i + " / " + pdf.numPages + " 页...");
+        setProgress(i / pdf.numPages * 100);
         const page = await pdf.getPage(i);
         const text = await page.getTextContent();
 
@@ -977,18 +1266,114 @@
           .trim())
           .filter(Boolean);
 
-        const normalized = lines.map((line) => {
-          // 简单标题推断：短行且不以句号结尾时作为二级标题。
-          if (line.length > 0 && line.length < 24 && !/[。.!?？]$/.test(line)) {
-            return "## " + line;
-          }
-          return line;
-        });
+        let normalized;
 
-        pages.push("## 第 " + i + " 页\n\n" + normalized.join("\n\n"));
+        // 检查页面是否包含图片操作
+        const ops = await page.getOperatorList();
+        let hasImages = false;
+        for (let j = 0; j < ops.fnArray.length; j++) {
+          const fn = ops.fnArray[j];
+          if (fn === pdfjsLib.OPS.paintImageXObject ||
+              fn === pdfjsLib.OPS.paintJpegXObject ||
+              fn === pdfjsLib.OPS.paintInlineImageXObject ||
+              fn === pdfjsLib.OPS.paintInlineImageXObjectGroup) {
+            hasImages = true;
+            break;
+          }
+        }
+
+        const needRender = (lines.length === 0 && pdfOcr) || hasImages;
+        let renderCanvas = null;
+        const capturedImages = [];
+
+        if (needRender) {
+          // 渲染页面，同时拦截 drawImage 调用来捕获内嵌图片
+          const viewport = page.getViewport({ scale: 2.0 });
+          renderCanvas = document.createElement("canvas");
+          renderCanvas.width = viewport.width;
+          renderCanvas.height = viewport.height;
+          const renderCtx = renderCanvas.getContext("2d");
+
+          if (hasImages) {
+            const origDrawImage = renderCtx.drawImage;
+            renderCtx.drawImage = function (source) {
+              try {
+                const w = source.width || source.naturalWidth || 0;
+                const h = source.height || source.naturalHeight || 0;
+                if (w >= 20 && h >= 20) {
+                  const c = document.createElement("canvas");
+                  c.width = w; c.height = h;
+                  c.getContext("2d").drawImage(source, 0, 0, w, h);
+                  capturedImages.push(c);
+                }
+              } catch (_) {}
+              return origDrawImage.apply(this, arguments);
+            };
+            await page.render({ canvasContext: renderCtx, viewport: viewport }).promise;
+            renderCtx.drawImage = origDrawImage;
+            console.log("PDF 第 " + i + " 页：检测到图片操作，拦截 drawImage 捕获到 " + capturedImages.length + " 张图片");
+          } else {
+            await page.render({ canvasContext: renderCtx, viewport: viewport }).promise;
+          }
+        }
+
+        if (lines.length === 0 && pdfOcr && renderCanvas) {
+          setStatus("PDF 第 " + i + " 页为扫描件，OCR 识别中...");
+          try {
+            const pageBlob = await new Promise((r) => renderCanvas.toBlob(r, "image/png"));
+            const ocrText = await runOcr(pageBlob);
+            normalized = ocrText.split("\n").filter(Boolean);
+          } catch (ocrErr) {
+            normalized = ["(OCR 识别失败: " + (ocrErr.message || "未知错误") + ")"];
+          }
+        } else {
+          normalized = lines.map((line) => {
+            // 简单标题推断：短行且不以句号结尾时作为二级标题。
+            if (line.length > 0 && line.length < 24 && !/[。.!?？]$/.test(line)) {
+              return "## " + line;
+            }
+            return line;
+          });
+        }
+
+        // 从拦截到的 drawImage 调用中提取图片
+        const pageImages = [];
+        for (const imgCanvas of capturedImages) {
+          try {
+            const imgBlob = await new Promise((r) => imgCanvas.toBlob(r, "image/png"));
+            if (!imgBlob) continue;
+            const imgName = baseNameNoExt(sourcePath) + "-pdf-p" + i + "-" + imgIdx + ".png";
+            imgIdx++;
+
+            if (options.imageMode === "base64") {
+              const dataUrl = await blobToDataUrl(imgBlob);
+              pageImages.push("![" + imgName + "](" + dataUrl + ")");
+            } else {
+              const outPath = buildImageOutPath(sourcePath, imgName);
+              assets.push({ path: outPath, content: imgBlob, isBinary: true });
+              pageImages.push("![" + imgName + "](" + relativeLinkFromMd(mdPath, outPath) + ")");
+            }
+
+            if (docImageOcr) {
+              try {
+                setStatus("PDF 第 " + i + " 页 图片 OCR: " + imgName);
+                const ocrText = await runOcr(imgBlob);
+                if (ocrText) {
+                  pageImages.push("\n> **OCR:** " + ocrText.replace(/\n/g, "\n> "));
+                }
+              } catch (_) {}
+            }
+          } catch (_) {}
+        }
+
+        let pageContent = "## 第 " + i + " 页\n\n" + normalized.join("\n\n");
+        if (pageImages.length) {
+          pageContent += "\n\n### 页面图片\n\n" + pageImages.join("\n\n");
+        }
+        pages.push(pageContent);
       }
 
-      return pages.join("\n\n---\n\n").trim();
+      return { md: pages.join("\n\n---\n\n").trim(), assets: assets };
     }
 
     async function convertTextLikeToMd(name, blob) {
@@ -1015,7 +1400,7 @@
       const ext = getExt(name);
 
       if (ext === "pdf") {
-        return { md: await convertPdfToMd(blob), assets: [] };
+        return convertPdfToMd(blob, Object.assign({}, options, { _sourcePath: name }));
       }
 
       if (ext === "docx") {
@@ -1047,8 +1432,7 @@
       if (enableOcr) {
         setStatus("图片 OCR 处理中: " + fileNameOnly(name));
         try {
-          const ocr = await Tesseract.recognize(blob, "eng+chi_sim");
-          ocrText = sanitizeMdText(ocr?.data?.text || "");
+          ocrText = await runOcr(blob);
         } catch (err) {
           ocrText = "OCR 失败: " + (err.message || "未知错误");
         }
@@ -1099,7 +1483,7 @@
       }
 
       if (AUDIO_EXTS.has(ext)) {
-        const md = await convertAudioToMd(name, blob, options.audioTx);
+        const md = await convertAudioToMd(name, blob, options.audioTx, options);
         return { md: md, assets: [] };
       }
 
@@ -1145,6 +1529,7 @@
           const entry = entries[current];
           const ext = getExt(entry.name);
           setStatus("正在处理 ZIP：" + (done + 1) + " / " + entries.length + " · " + entry.name);
+          setProgress((done + 1) / entries.length * 100);
 
           if (!SUPPORTED_EXTS.has(ext) || ext === "zip") {
             results[current] = { skipped: entry.name };
@@ -1157,7 +1542,10 @@
             const converted = await convertAnyFileToMd(entry.name, blob, {
               imageMode: imageMode.value,
               imageOcr: enableImageOcr.checked,
-              audioTx: enableAudioTx.checked
+              docImageOcr: enableDocImageOcr.checked,
+              pdfOcr: enablePdfOcr.checked,
+              audioTx: enableAudioTx.checked,
+              audioEngine: audioEngine.value
             });
             results[current] = {
               entryName: entry.name,
@@ -1224,6 +1612,7 @@
       clearError();
       convertBtn.disabled = true;
       setStatus("开始转换...");
+      setProgress(0);
 
       try {
         const ext = getExt(currentFile.name);
@@ -1238,7 +1627,10 @@
           const converted = await convertAnyFileToMd(currentFile.name, currentFile, {
             imageMode: imageMode.value,
             imageOcr: enableImageOcr.checked,
-            audioTx: enableAudioTx.checked
+            docImageOcr: enableDocImageOcr.checked,
+            pdfOcr: enablePdfOcr.checked,
+            audioTx: enableAudioTx.checked,
+            audioEngine: audioEngine.value
           });
           const md = converted.md;
           const baseName = fileNameOnly(currentFile.name);
@@ -1256,9 +1648,12 @@
         }
 
         updateOutput(result.combined, result.files);
+        setProgress(100);
+        setTimeout(function() { setProgress(-1); }, 1500);
       } catch (err) {
         showError("转换失败：" + (err.message || "未知错误"));
         setStatus("转换失败。");
+        setProgress(-1);
       } finally {
         convertBtn.disabled = !currentFile;
       }
@@ -1295,25 +1690,6 @@
 
     convertBtn.addEventListener("click", convertCurrentFile);
 
-    youtubeBtn.addEventListener("click", async () => {
-      const url = youtubeInput.value.trim();
-      if (!url) {
-        showError("请先输入 YouTube URL");
-        return;
-      }
-      clearError();
-      youtubeBtn.disabled = true;
-      setStatus("正在转换 YouTube URL...");
-      try {
-        const md = await convertYoutubeUrlToMd(url);
-        updateOutput(md, [{ path: "youtube.md", content: md }]);
-      } catch (err) {
-        showError("URL 转换失败：" + (err.message || "未知错误"));
-        setStatus("URL 转换失败。");
-      } finally {
-        youtubeBtn.disabled = false;
-      }
-    });
 
     clearBtn.addEventListener("click", () => {
       fileInput.value = "";
