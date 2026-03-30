@@ -527,6 +527,68 @@
     let asrModule = null;
     const ZIP_CONCURRENCY = 3;
 
+    /* ── OS 元数据文件过滤 ── */
+
+    const OS_JUNK_RE = [
+      /(?:^|\/)\.DS_Store$/i,
+      /(?:^|\/)__MACOSX\//i,
+      /(?:^|\/)Thumbs\.db$/i,
+      /(?:^|\/)desktop\.ini$/i,
+      /(?:^|\/)\._.*/
+    ];
+    function isOsJunkFile(name) {
+      return OS_JUNK_RE.some(function (re) { return re.test(name); });
+    }
+
+    /* ── ZIP 文件名编码自动检测 ── */
+
+    function looksGarbled(name) {
+      if (/\uFFFD/.test(name)) return true;
+      if (/[\uE000-\uF8FF]/u.test(name)) return true;
+      try { if (/[\u{F0000}-\u{10FFFF}]/u.test(name)) return true; } catch (e) {}
+      if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(name)) return true;
+      return false;
+    }
+
+    async function loadZipSmart(arrayBuffer) {
+      var zip = await JSZip.loadAsync(arrayBuffer);
+      var names = Object.values(zip.files).map(function (e) { return e.name; });
+      var garbled = names.some(function (n) { return !isOsJunkFile(n) && looksGarbled(n); });
+      if (!garbled) return zip;
+
+      var tryEncodings = ["gbk", "gb18030", "big5", "shift_jis", "euc-kr", "windows-1252"];
+      for (var i = 0; i < tryEncodings.length; i++) {
+        try {
+          var dec = new TextDecoder(tryEncodings[i], { fatal: false });
+          var testZip = await JSZip.loadAsync(arrayBuffer, {
+            decodeFileName: function (bytes) {
+              return dec.decode(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+            }
+          });
+          var testNames = Object.values(testZip.files).map(function (e) { return e.name; });
+          var stillGarbled = testNames.some(function (n) { return !isOsJunkFile(n) && looksGarbled(n); });
+          if (!stillGarbled) {
+            console.log("[ZIP] 使用编码: " + tryEncodings[i]);
+            return testZip;
+          }
+        } catch (e) { continue; }
+      }
+      return zip;
+    }
+
+    /* ── 模糊扩展名提取（容错） ── */
+
+    function getExtRobust(name) {
+      var normal = getExt(name);
+      if (SUPPORTED_EXTS.has(normal)) return normal;
+      var lower = name.toLowerCase();
+      var best = "";
+      SUPPORTED_EXTS.forEach(function (ext) {
+        if (lower.endsWith(ext) && ext.length > best.length) best = ext;
+      });
+      return best || normal;
+    }
+
     /* ── OCR 统一入口（Ollama） ── */
 
     async function runOcr(blob) {
@@ -906,7 +968,7 @@
 
       const chunks = [];
       for (let i = 0; i < slides.length; i++) {
-        const xml = await zip.files[slides[i]].async("text");
+        const xml = await smartReadText(await zip.files[slides[i]].async("blob"));
         const parser = new DOMParser();
         const doc = parser.parseFromString(xml, "application/xml");
         const texts = Array.from(doc.getElementsByTagName("a:t")).map((n) => n.textContent || "").filter(Boolean);
@@ -983,7 +1045,7 @@
 
       const out = [];
       for (let i = 0; i < pages.length; i++) {
-        const html = await zip.files[pages[i]].async("text");
+        const html = await smartReadText(await zip.files[pages[i]].async("blob"));
         const md = turndownService.turndown(html).trim();
         if (md) out.push("## 章节: " + pages[i] + "\n\n" + md);
       }
@@ -1234,7 +1296,11 @@
 
     async function convertPdfToMd(file, options) {
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pdf = await pdfjsLib.getDocument({
+        data: arrayBuffer,
+        cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+        cMapPacked: true
+      }).promise;
       const pages = [];
       const assets = [];
       const pdfOcr = options && options.pdfOcr;
@@ -1376,9 +1442,24 @@
       return { md: pages.join("\n\n---\n\n").trim(), assets: assets };
     }
 
+    async function smartReadText(blob) {
+      const buf = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      // 先尝试 UTF-8
+      const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      // 如果没有替换字符且不含 BOM 后的乱码，直接返回
+      if (!utf8.includes("\uFFFD")) return utf8;
+      // 回退到 GBK（涵盖 GB2312）
+      try {
+        return new TextDecoder("gbk", { fatal: false }).decode(bytes);
+      } catch (_) {
+        return utf8;
+      }
+    }
+
     async function convertTextLikeToMd(name, blob) {
       const ext = getExt(name);
-      const text = await blob.text();
+      const text = await smartReadText(blob);
 
       if (ext === "md" || ext === "markdown") {
         return text.trim();
@@ -1504,9 +1585,10 @@
 
     async function convertZipToMd(file) {
       setStatus("正在读取 ZIP 包...");
-      const zip = await JSZip.loadAsync(await file.arrayBuffer());
+      const buf = await file.arrayBuffer();
+      const zip = await loadZipSmart(buf);
       const entries = Object.values(zip.files)
-        .filter((entry) => !entry.dir)
+        .filter((entry) => !entry.dir && !isOsJunkFile(entry.name))
         .sort((a, b) => a.name.localeCompare(b.name));
 
       if (entries.length === 0) {
@@ -1527,7 +1609,7 @@
           if (current >= entries.length) return;
 
           const entry = entries[current];
-          const ext = getExt(entry.name);
+          const ext = getExtRobust(entry.name);
           setStatus("正在处理 ZIP：" + (done + 1) + " / " + entries.length + " · " + entry.name);
           setProgress((done + 1) / entries.length * 100);
 
@@ -1539,7 +1621,12 @@
 
           try {
             const blob = await entry.async("blob");
-            const converted = await convertAnyFileToMd(entry.name, blob, {
+            // If the extension was fuzzy-matched (garbled dot), fix the name for downstream
+            var effectiveName = entry.name;
+            if (ext !== getExt(entry.name)) {
+              effectiveName = entry.name.slice(0, entry.name.length - ext.length) + "." + ext;
+            }
+            const converted = await convertAnyFileToMd(effectiveName, blob, {
               imageMode: imageMode.value,
               imageOcr: enableImageOcr.checked,
               docImageOcr: enableDocImageOcr.checked,
